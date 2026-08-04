@@ -444,7 +444,7 @@ public class HexGrid : MonoBehaviour
 	public void RefreshCellPosition (int cellIndex)
 	{
 		Vector3 position = CellPositions[cellIndex];
-		position.y = CellData[cellIndex].Elevation * HexMetrics.elevationStep;
+		position.y = CellData[cellIndex].VisualElevation * HexMetrics.elevationStep;
 		position.y +=
 			(HexMetrics.SampleNoise(position).y * 2f - 1f) *
 			HexMetrics.elevationPerturbStrength;
@@ -457,10 +457,66 @@ public class HexGrid : MonoBehaviour
 	}
 
 	/// <summary>
+	/// Rebuild the two visual seabed tiers. Water directly touching dry land is
+	/// shallow; every other underwater cell is deep ocean.
+	/// </summary>
+	public void RefreshWaterDepths()
+	{
+		for (int i = 0; i < CellData.Length; i++)
+		{
+			RecalculateWaterDepth(i);
+		}
+	}
+
+	/// <summary>
+	/// Rebuild water depth for an edited cell and the one-ring shoreline that
+	/// can be affected by its underwater state.
+	/// </summary>
+	public void RefreshWaterDepthsAround(int cellIndex)
+	{
+		RecalculateWaterDepth(cellIndex);
+		RefreshCellPosition(cellIndex);
+		HexCoordinates coordinates = CellData[cellIndex].coordinates;
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			if (TryGetCellIndex(coordinates.Step(d), out int neighborIndex))
+			{
+				RecalculateWaterDepth(neighborIndex);
+				RefreshCellPosition(neighborIndex);
+			}
+		}
+	}
+
+	void RecalculateWaterDepth(int cellIndex)
+	{
+		HexCellData data = CellData[cellIndex];
+		if (!data.IsUnderwater)
+		{
+			data.visualWaterDepth = 0;
+			CellData[cellIndex] = data;
+			return;
+		}
+
+		bool touchesLand = false;
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			if (TryGetCellIndex(data.coordinates.Step(d), out int neighborIndex) &&
+				!CellData[neighborIndex].IsUnderwater)
+			{
+				touchesLand = true;
+				break;
+			}
+		}
+		data.visualWaterDepth = (byte)(touchesLand ? 1 : 2);
+		CellData[cellIndex] = data;
+	}
+
+	/// <summary>
 	/// Refresh all cells, to be done after generating a map.
 	/// </summary>
 	public void RefreshAllCells()
 	{
+		RefreshWaterDepths();
 		for (int i = 0; i < CellData.Length; i++)
 		{
 			SearchData[i].searchPhase = 0;
@@ -485,6 +541,7 @@ public class HexGrid : MonoBehaviour
 			HexCellData data = CellData[i];
 			data.values.Save(writer);
 			data.flags.Save(writer);
+			writer.Write((byte)data.landform);
 		}
 
 		writer.Write(units.Count);
@@ -526,11 +583,11 @@ public class HexGrid : MonoBehaviour
 			HexCellData data = CellData[i];
 			data.values = HexValues.Load(reader, header);
 			data.flags = data.flags.Load(reader, header);
+			data.landform = header >= 6 ?
+				(HexLandform)reader.ReadByte() : HexLandform.Flat;
 			CellData[i] = data;
-			RefreshCellPosition(i);
-			ShaderData.RefreshTerrain(i);
-			ShaderData.RefreshVisibility(i);
 		}
+		RefreshAllCells();
 		for (int i = 0; i < chunks.Length; i++)
 		{
 			chunks[i].Refresh();

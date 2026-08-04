@@ -18,6 +18,18 @@ public class HexGridChunk : MonoBehaviour
 	[SerializeField]
 	HexFeatureManager features;
 
+	[SerializeField]
+	Material reliefMaterial;
+
+	[SerializeField]
+	Material coastCliffMaterial;
+
+	[SerializeField]
+	HexTerrainStyle terrainStyle;
+
+	HexReliefMesh relief;
+	HexCoastMesh coastCliffs;
+
 	int[] cellIndices;
 
 	Canvas gridCanvas;
@@ -26,6 +38,17 @@ public class HexGridChunk : MonoBehaviour
 	{
 		gridCanvas = GetComponentInChildren<Canvas>();
 		cellIndices = new int[HexMetrics.chunkSizeX * HexMetrics.chunkSizeZ];
+		GameObject reliefObject = new("Relief");
+		reliefObject.transform.SetParent(transform, false);
+		reliefObject.layer = terrain.gameObject.layer;
+		relief = reliefObject.AddComponent<HexReliefMesh>();
+		relief.Initialize(reliefMaterial, terrainStyle);
+
+		GameObject coastObject = new("Coast Cliffs");
+		coastObject.transform.SetParent(transform, false);
+		coastObject.layer = terrain.gameObject.layer;
+		coastCliffs = coastObject.AddComponent<HexCoastMesh>();
+		coastCliffs.Initialize(coastCliffMaterial, terrainStyle);
 	}
 
 	/// <summary>
@@ -70,6 +93,8 @@ public class HexGridChunk : MonoBehaviour
 		waterShore.Clear();
 		estuaries.Clear();
 		features.Clear();
+		relief.Clear();
+		coastCliffs.Clear();
 		for (int i = 0; i < cellIndices.Length; i++)
 		{
 			Triangulate(cellIndices[i]);
@@ -81,19 +106,34 @@ public class HexGridChunk : MonoBehaviour
 		waterShore.Apply();
 		estuaries.Apply();
 		features.Apply();
+		relief.Apply();
+		coastCliffs.Apply();
 	}
 
 	void Triangulate(int cellIndex)
 	{
 		HexCellData cell = Grid.CellData[cellIndex];
 		Vector3 cellPosition = Grid.CellPositions[cellIndex];
+		if (!cell.IsUnderwater && !cell.HasRiver && !cell.HasRoads && !cell.IsSpecial)
+		{
+			relief.AddCell(
+				cellIndex,
+				cellPosition,
+				cell.landform,
+				cell.TerrainTypeIndex,
+				cell.Elevation,
+				HexMetrics.SampleHashGrid(cellPosition),
+				GetRidgeAngle(cell, cellPosition),
+				GetLandformNeighborMask(cell));
+		}
 		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 		{
 			Triangulate(d, cell, cellIndex, cellPosition);
 		}
 		if (!cell.IsUnderwater)
 		{
-			if (!cell.HasRiver && !cell.HasRoads)
+			if (!cell.HasRiver && !cell.HasRoads &&
+				cell.landform == HexLandform.Flat)
 			{
 				features.AddFeature(cell, cellPosition);
 			}
@@ -102,6 +142,44 @@ public class HexGridChunk : MonoBehaviour
 				features.AddSpecialFeature(cell, cellPosition);
 			}
 		}
+	}
+
+	int GetLandformNeighborMask(HexCellData cell)
+	{
+		int mask = 0;
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			if (Grid.TryGetCellIndex(cell.coordinates.Step(d), out int neighborIndex) &&
+				Grid.CellData[neighborIndex].landform == cell.landform)
+			{
+				mask |= 1 << (int)d;
+			}
+		}
+		return mask;
+	}
+
+	float GetRidgeAngle(HexCellData cell, Vector3 cellPosition)
+	{
+		float xx = 0f, xz = 0f, zz = 0f;
+		int matchingNeighbors = 0;
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			if (!Grid.TryGetCellIndex(cell.coordinates.Step(d), out int neighborIndex) ||
+				Grid.CellData[neighborIndex].landform != cell.landform)
+			{
+				continue;
+			}
+			Vector3 direction = HexMetrics.GetSolidEdgeMiddle(d).normalized;
+			xx += direction.x * direction.x;
+			xz += direction.x * direction.z;
+			zz += direction.z * direction.z;
+			matchingNeighbors++;
+		}
+		if (matchingNeighbors == 0)
+		{
+			return HexMetrics.SampleHashGrid(cellPosition).a * Mathf.PI;
+		}
+		return 0.5f * Mathf.Atan2(2f * xz, xx - zz);
 	}
 
 	void Triangulate(
@@ -137,7 +215,9 @@ public class HexGridChunk : MonoBehaviour
 		else
 		{
 			TriangulateWithoutRiver(direction, cell, cellIndex, center, e);
-			if (!cell.IsUnderwater && !cell.HasRoadThroughEdge(direction))
+			if (!cell.IsUnderwater &&
+				cell.landform == HexLandform.Flat &&
+				!cell.HasRoadThroughEdge(direction))
 			{
 				features.AddFeature(
 					cell, (center + e.v1 + e.v5) * (1f / 3f));
@@ -244,6 +324,7 @@ public class HexGridChunk : MonoBehaviour
 		water.AddTriangleCellData(indices, weights1);
 
 		Vector3 center2 = Grid.CellPositions[neighborIndex];
+		float landSurfaceY = center2.y;
 		int cellColumnIndex = cell.coordinates.ColumnIndex;
 		if (neighborColumnIndex < cellColumnIndex - 1)
 		{
@@ -265,6 +346,14 @@ public class HexGridChunk : MonoBehaviour
 		}
 		else
 		{
+			HexCellData landCell = Grid.CellData[neighborIndex];
+			coastCliffs.AddEdge(
+				e2,
+				landSurfaceY,
+				neighborIndex,
+				landCell.TerrainTypeIndex,
+				landCell.landform,
+				HexMetrics.SampleHashGrid(center2));
 			waterShore.AddQuad(e1.v1, e1.v2, e2.v1, e2.v2);
 			waterShore.AddQuad(e1.v2, e1.v3, e2.v2, e2.v3);
 			waterShore.AddQuad(e1.v3, e1.v4, e2.v3, e2.v4);
@@ -445,7 +534,9 @@ public class HexGridChunk : MonoBehaviour
 			e, weights1, cellIndex);
 		TriangulateEdgeFan(center, m, cellIndex);
 
-		if (!cell.IsUnderwater && !cell.HasRoadThroughEdge(direction))
+		if (!cell.IsUnderwater &&
+			cell.landform == HexLandform.Flat &&
+			!cell.HasRoadThroughEdge(direction))
 		{
 			features.AddFeature(
 				cell, (center + e.v1 + e.v5) * (1f / 3f));
@@ -738,7 +829,13 @@ public class HexGridChunk : MonoBehaviour
 			}
 		}
 
-		if (cell.GetEdgeType(neighbor) == HexEdgeType.Slope)
+		// The shallow shelf and deep ocean are the only two underwater height
+		// tiers. Connect them with one clean ramp; land terrace subdivision would
+		// visually reintroduce several fake depth bands below the water.
+		bool underwaterShelfTransition =
+			cell.IsUnderwater && neighbor.IsUnderwater;
+		if (!underwaterShelfTransition &&
+			cell.GetEdgeType(neighbor) == HexEdgeType.Slope)
 		{
 			TriangulateEdgeTerraces(e1, cellIndex, e2, neighborIndex, hasRoad);
 		}
@@ -760,9 +857,9 @@ public class HexGridChunk : MonoBehaviour
 			Vector3 v5 = e1.v5 + HexMetrics.GetBridge(direction.Next());
 			v5.y = Grid.CellPositions[nextNeighborIndex].y;
 
-			if (cell.Elevation <= neighbor.Elevation)
+			if (cell.VisualElevation <= neighbor.VisualElevation)
 			{
-				if (cell.Elevation <= nextNeighbor.Elevation)
+				if (cell.VisualElevation <= nextNeighbor.VisualElevation)
 				{
 					TriangulateCorner(
 						e1.v5, cellIndex, cell,
@@ -777,7 +874,7 @@ public class HexGridChunk : MonoBehaviour
 						e2.v5, neighborIndex, neighbor);
 				}
 			}
-			else if (neighbor.Elevation <= nextNeighbor.Elevation)
+			else if (neighbor.VisualElevation <= nextNeighbor.VisualElevation)
 			{
 				TriangulateCorner(
 					e2.v5, neighborIndex, neighbor,
@@ -816,6 +913,19 @@ public class HexGridChunk : MonoBehaviour
 		Vector3 left, int leftCellIndex, HexCellData leftCell,
 		Vector3 right, int rightCellIndex, HexCellData rightCell)
 	{
+		if (bottomCell.IsUnderwater && leftCell.IsUnderwater &&
+			rightCell.IsUnderwater)
+		{
+			terrain.AddTriangle(bottom, left, right);
+			Vector3 underwaterIndices;
+			underwaterIndices.x = bottomCellIndex;
+			underwaterIndices.y = leftCellIndex;
+			underwaterIndices.z = rightCellIndex;
+			terrain.AddTriangleCellData(
+				underwaterIndices, weights1, weights2, weights3);
+			return;
+		}
+
 		HexEdgeType leftEdgeType = bottomCell.GetEdgeType(leftCell);
 		HexEdgeType rightEdgeType = bottomCell.GetEdgeType(rightCell);
 
@@ -862,7 +972,7 @@ public class HexGridChunk : MonoBehaviour
 		}
 		else if (leftCell.GetEdgeType(rightCell) == HexEdgeType.Slope)
 		{
-			if (leftCell.Elevation < rightCell.Elevation)
+			if (leftCell.VisualElevation < rightCell.VisualElevation)
 			{
 				TriangulateCornerCliffTerraces(
 					right, rightCellIndex, rightCell,
@@ -955,7 +1065,8 @@ public class HexGridChunk : MonoBehaviour
 		Vector3 left, int leftCellIndex, HexCellData leftCell,
 		Vector3 right, int rightCellIndex, HexCellData rightCell)
 	{
-		float b = 1f / (rightCell.Elevation - beginCell.Elevation);
+		float b = 1f /
+			(rightCell.VisualElevation - beginCell.VisualElevation);
 		if (b < 0)
 		{
 			b = -b;
@@ -992,7 +1103,8 @@ public class HexGridChunk : MonoBehaviour
 		Vector3 left, int leftCellIndex, HexCellData leftCell,
 		Vector3 right, int rightCellIndex, HexCellData rightCell)
 	{
-		float b = 1f / (leftCell.Elevation - beginCell.Elevation);
+		float b = 1f /
+			(leftCell.VisualElevation - beginCell.VisualElevation);
 		if (b < 0)
 		{
 			b = -b;

@@ -49,7 +49,7 @@ public struct HexCell
 		{
 			Values = Values.WithElevation(elevation);
 			grid.ShaderData.ViewElevationChanged(index);
-			grid.RefreshCellPosition(index);
+			grid.RefreshWaterDepthsAround(index);
 			ValidateRivers();
 			HexFlags flags = Flags;
 			for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
@@ -77,6 +77,9 @@ public struct HexCell
 		{
 			Values = Values.WithWaterLevel(waterLevel);
 			grid.ShaderData.ViewElevationChanged(index);
+			// A water edit can change the shallow/deep tier of this cell and all
+			// directly adjacent sea cells.
+			grid.RefreshWaterDepthsAround(index);
 			ValidateRivers();
 			grid.RefreshCellWithDependents(index);
 		}
@@ -190,6 +193,20 @@ public struct HexCell
 	{
 		get => grid.CellData[index].values;
 		set => grid.CellData[index].values = value;
+	}
+
+	/// <summary>
+	/// Local visual terrain shape.
+	/// </summary>
+	public readonly HexLandform Landform => grid.CellData[index].landform;
+
+	public readonly void SetLandform(HexLandform landform)
+	{
+		if (grid.CellData[index].landform != landform)
+		{
+			grid.CellData[index].landform = landform;
+			grid.RefreshCell(index);
+		}
 	}
 
 	/// <summary>

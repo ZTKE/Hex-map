@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b8f7a095a9c4a1fb083b0a9a6e55401, type: 3}
+  m_Name: Default Hex Terrain Style
+  m_EditorClassIdentifier: 
+  hillHeight: 2.9
+  mountainHeight: 5.45
+  mountainWidth: 0.93
+  desertMountainHeight: 4.45
+  desertMountainWidth: 1.08
+  terrainSurfaceAtlas: {fileID: 2800000, guid: 654b92dcd6b248cfa7b804bfb4bf5020, type: 3}
+  terrainSurfaceBlend: 0.74
+  terrainSurfaceTiling: 0.018
+  terrainMacroVariation: 0.075
+  rockAlbedo: {fileID: 2800000, guid: d60b6b2c8e154a88a789e47948756d38, type: 3}
+  strataAlbedo: {fileID: 2800000, guid: aa90ef8b47f7443a9c407cb3ac3a209e, type: 3}
+  rockNormal: {fileID: 2800000, guid: e193dd071f754d8b88121f65c2b54c99, type: 3}
+  mountainColorDecal: {fileID: 0}
+  snowLowHeight: 0.75
+  snowHighHeight: 0.8125
+  desertStripeCenters: {x: 0.417, y: 0.75, z: 0.833, w: 0.958}
+  desertStripeWidths: {x: 0.052, y: 0.032, z: 0.024, w: 0.017}
+  deepOcean: {r: 0.025, g: 0.16, b: 0.25, a: 1}
+  shallowWater: {r: 0.08, g: 0.47, b: 0.55, a: 1}
+  shoreFoam: {r: 0.84, g: 0.94, b: 0.9, a: 1}
+  wetSand: {r: 0.45, g: 0.34, b: 0.2, a: 1}
+  drySand: {r: 0.78, g: 0.63, b: 0.36, a: 1}
+  riverWater: {r: 0.055, g: 0.36, b: 0.42, a: 1}
+  riverBank: {r: 0.49, g: 0.39, b: 0.23, a: 1}
+  waterStyleBlend: 0.84
+  coastCliffLow: {r: 0.32, g: 0.24, b: 0.16, a: 1}
+  coastCliffHigh: {r: 0.67, g: 0.58, b: 0.43, a: 1}
+  snowCoastCliff: {r: 0.72, g: 0.76, b: 0.75, a: 1}
+  coastCliffStrata: 0.68
+  plantTints:
+  - {r: 0.62, g: 0.55, b: 0.28, a: 1}
+  - {r: 0.24, g: 0.7, b: 0.19, a: 1}
+  - {r: 0.58, g: 0.64, b: 0.2, a: 1}
+  - {r: 0.42, g: 0.46, b: 0.29, a: 1}
+  - {r: 0.31, g: 0.46, b: 0.38, a: 1}
+  vegetationStyleBlend: 0.74
+  shaderStyleStrength: 0.82
+  shaderSaturation: 1.08
+  shaderContrast: 1.02
+  shaderPosterization: 0.13
+  shaderBrushStrength: 0.055
+  shaderBrushScale: 0.055
+  shaderWarmLightTint: {r: 1.07, g: 1.01, b: 0.9, a: 1}
+  shaderCoolShadowTint: {r: 0.76, g: 0.83, b: 0.92, a: 1}

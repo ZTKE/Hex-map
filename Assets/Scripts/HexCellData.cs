@@ -20,9 +20,31 @@ public struct HexCellData
 	public HexCoordinates coordinates;
 
 	/// <summary>
+	/// Local visual relief, independent from simulation elevation.
+	/// </summary>
+	public HexLandform landform;
+
+	/// <summary>
+	/// Visual-only underwater tier: 0 dry, 1 coastal/shallow, 2 offshore/deep.
+	/// It is derived from shoreline topology and is not saved.
+	/// </summary>
+	public byte visualWaterDepth;
+
+	/// <summary>
 	/// Surface elevation level.
 	/// </summary>
 	public readonly int Elevation => values.Elevation;
+
+	/// <summary>
+	/// Base elevation used by terrain geometry. The strategy-map surface uses a
+	/// common datum; submerged cells get a shallow one-step visual basin while
+	/// simulation elevation remains untouched.
+	/// </summary>
+	public readonly int VisualWaterDepth => IsUnderwater ?
+		(visualWaterDepth >= 2 ? 2 : 1) : 0;
+
+	public readonly int VisualElevation =>
+		HexMetrics.visualWaterLevel - VisualWaterDepth;
 
 	/// <summary>
 	/// Water elevation level.
@@ -117,21 +139,21 @@ public struct HexCellData
 	/// Vertical positions the the stream bed, if applicable.
 	/// </summary>
 	public readonly float StreamBedY =>
-		(values.Elevation + HexMetrics.streamBedElevationOffset) *
+		(VisualElevation + HexMetrics.streamBedElevationOffset) *
 		HexMetrics.elevationStep;
 
 	/// <summary>
 	/// Vertical position of the river's surface, if applicable.
 	/// </summary>
 	public readonly float RiverSurfaceY =>
-		(values.Elevation + HexMetrics.waterElevationOffset) *
+		(VisualElevation + HexMetrics.waterElevationOffset) *
 		HexMetrics.elevationStep;
 
 	/// <summary>
 	/// Vertical position of the water surface, if applicable.
 	/// </summary>
 	public readonly float WaterSurfaceY =>
-		(values.WaterLevel + HexMetrics.waterElevationOffset) *
+		(HexMetrics.visualWaterLevel + HexMetrics.waterElevationOffset) *
 		HexMetrics.elevationStep;
 	
 	/// <summary>
@@ -147,7 +169,7 @@ public struct HexCellData
 	/// <param name="otherCell">Other cell to consider as neighbor.</param>
 	/// <returns><see cref="HexEdgeType"/> between cells.</returns>
 	public readonly HexEdgeType GetEdgeType(HexCellData otherCell) =>
-		HexMetrics.GetEdgeType(values.Elevation, otherCell.values.Elevation);
+		HexMetrics.GetEdgeType(VisualElevation, otherCell.VisualElevation);
 	
 	/// <summary>
 	/// Whether an incoming river goes through a specific cell edge.

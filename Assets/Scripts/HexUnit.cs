@@ -79,7 +79,8 @@ public class HexUnit : MonoBehaviour
 	/// <returns>Whether the unit could occupy the cell.</returns>
 	public bool IsValidDestination(HexCell cell) =>
 		cell.Flags.HasAll(HexFlags.Explored | HexFlags.Explorable) &&
-		!cell.Values.IsUnderwater && !cell.Unit;
+		!cell.Values.IsUnderwater &&
+		cell.Landform != HexLandform.Mountain && !cell.Unit;
 
 	/// <summary>
 	/// Travel along a path.
@@ -244,6 +245,10 @@ public class HexUnit : MonoBehaviour
 			moveCost = edgeType == HexEdgeType.Flat ? 5 : 10;
 			HexValues v = toCell.Values;
 			moveCost += v.UrbanLevel + v.FarmLevel + v.PlantLevel;
+			if (toCell.Landform == HexLandform.Hill)
+			{
+				moveCost += 5;
+			}
 		}
 		return moveCost;
 	}

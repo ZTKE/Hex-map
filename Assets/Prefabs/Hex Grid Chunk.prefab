@@ -924,3 +924,6 @@ MonoBehaviour:
   waterShore: {fileID: 114000010976435170}
   estuaries: {fileID: 114000013036081130}
   features: {fileID: 114000013279209982}
+  reliefMaterial: {fileID: 2100000, guid: 8c1c89a6b2aa4704ad00d5754f408aac, type: 2}
+  coastCliffMaterial: {fileID: 2100000, guid: 220c9a631f334cf78572e985c3f3c953, type: 2}
+  terrainStyle: {fileID: 11400000, guid: f13256d3f0a74b6c9328ed5fc4dd89c2, type: 2}

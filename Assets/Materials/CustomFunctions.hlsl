@@ -1,6 +1,47 @@
 ﻿#include "HexCellData.hlsl"
 #include "Water.hlsl"
 
+#include "Hex Civilization Style.hlsl"
+
+float4 _HexDeepOceanColor;
+float4 _HexShallowWaterColor;
+float4 _HexShoreFoamColor;
+float4 _HexWetSandColor;
+float4 _HexDrySandColor;
+float4 _HexRiverWaterColor;
+float4 _HexRiverBankColor;
+float _HexWaterStyleBlend;
+
+float3 HexStyledColor(float3 fallback, float3 styled)
+{
+	return lerp(fallback, styled, saturate(_HexWaterStyleBlend));
+}
+
+float3 HexShoreColor(
+	float shore,
+	float foam,
+	float waves,
+	float2 worldXZ,
+	float3 fallback)
+{
+	float waterDepth = smoothstep(0.02, 0.68, shore);
+	float3 ocean = lerp(
+		_HexDeepOceanColor.rgb, _HexShallowWaterColor.rgb, waterDepth);
+	float beach = smoothstep(0.58, 0.78, shore);
+	float3 sand = lerp(
+		_HexWetSandColor.rgb, _HexDrySandColor.rgb,
+		smoothstep(0.7, 0.98, shore));
+	float3 styled = lerp(ocean, sand, beach);
+	float foamBand = foam * (1.0 - smoothstep(0.68, 0.84, shore));
+	styled += _HexShoreFoamColor.rgb * foamBand * 0.62;
+	styled += _HexShoreFoamColor.rgb * waves * (1.0 - beach) * 0.14;
+	return HexCivGrade(
+		HexStyledColor(fallback, styled),
+		float3(worldXZ.x, 0.0, worldXZ.y),
+		0.68 + waves * 0.22,
+		0.58);
+}
+
 // Used by Water and Water Shore shader graphs.
 void GetVertexCellData_float(
 	float3 Indices,
@@ -52,15 +93,16 @@ void GetFragmentDataEstuary_float(
 	float foam = Foam(shore, WorldPosition.xz, Time, NoiseTexture);
 	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
 	waves *= 1 - shore;
-	float shoreWater = max(foam, waves);
 
 	float river = River(RiverUV, Time, NoiseTexture);
 
-	float water = lerp(shoreWater, river, ShoreUV.x);
-
-	float4 c = saturate(Color + water);
-	BaseColor = c.rgb * Visibility.x;
-	Alpha = c.a;
+	float3 coast = HexShoreColor(
+		shore, foam, waves, WorldPosition.xz, Color.rgb);
+	float3 riverColor = HexStyledColor(Color.rgb, _HexRiverWaterColor.rgb);
+	float3 c = saturate(lerp(coast, riverColor + river * 0.16, ShoreUV.x));
+	BaseColor = c * Visibility.x;
+	Alpha = lerp(Color.a, lerp(0.7, 0.5, shore),
+		saturate(_HexWaterStyleBlend));
 	Exploration = Visibility.y;
 }
 
@@ -76,7 +118,9 @@ void GetFragmentDataRoad_float(
 {
 	float4 noise = NoiseTexture.Sample(
 		NoiseTexture.samplerstate, WorldPosition.xz * (3 * TILING_SCALE));
-	BaseColor = Color.rgb * ((noise.y * 0.75 + 0.25) * Visibility.x);
+	float3 roadColor = Color.rgb * (noise.y * 0.75 + 0.25);
+	BaseColor = HexCivGrade(
+		roadColor, WorldPosition, 0.58, 0.72) * Visibility.x;
 	Alpha = BlendUV.x;
 	Alpha *= noise.x + 0.5;
 	Alpha = smoothstep(0.4, 0.7, Alpha);
@@ -94,9 +138,16 @@ void GetFragmentDataRiver_float(
 	out float Exploration)
 {
 	float river = River(RiverUV, Time, NoiseTexture);
-	float4 c = saturate(Color + river);
-	BaseColor = c.rgb * Visibility.x;
-	Alpha = c.a;
+	float edgeSilt = smoothstep(0.66, 0.98, abs(RiverUV.x * 2.0 - 1.0));
+	float3 styled = lerp(
+		_HexRiverWaterColor.rgb, _HexRiverBankColor.rgb, edgeSilt * 0.34);
+	float3 c = saturate(HexStyledColor(Color.rgb, styled) +
+		_HexShoreFoamColor.rgb * river * 0.12);
+	c = HexCivGrade(
+		c, float3(RiverUV.x * 19.0, 0.0, RiverUV.y * 19.0),
+		0.66 + river * 0.16, 0.46);
+	BaseColor = c * Visibility.x;
+	Alpha = lerp(Color.a, 0.68, saturate(_HexWaterStyleBlend));
 	Exploration = Visibility.y;
 }
 
@@ -111,10 +162,12 @@ void GetFragmentDataWater_float(
 	out float Exploration)
 {
 	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
-	float4 c = saturate(Color + waves);
+	float3 water = HexStyledColor(Color.rgb, _HexDeepOceanColor.rgb);
+	float3 c = saturate(water + _HexShoreFoamColor.rgb * waves * 0.12);
+	c = HexCivGrade(c, WorldPosition, 0.66 + waves * 0.2, 0.48);
 
-	BaseColor = c.rgb * Visibility.x;
-	Alpha = c.a;
+	BaseColor = c * Visibility.x;
+	Alpha = lerp(Color.a, 0.76, saturate(_HexWaterStyleBlend));
 	Exploration = Visibility.y;
 }
 
@@ -133,9 +186,11 @@ void GetFragmentDataShore_float(
 	float foam = Foam(shore, WorldPosition.xz, Time, NoiseTexture);
 	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
 	waves *= 1 - shore;
-	float4 c = saturate(Color + max(foam, waves));
+	float3 c = saturate(HexShoreColor(
+		shore, foam, waves, WorldPosition.xz, Color.rgb));
 	
-	BaseColor = c.rgb * Visibility.x;
-	Alpha = c.a;
+	BaseColor = c * Visibility.x;
+	Alpha = lerp(Color.a, lerp(0.74, 0.38, smoothstep(0.2, 1.0, shore)),
+		saturate(_HexWaterStyleBlend));
 	Exploration = Visibility.y;
 }

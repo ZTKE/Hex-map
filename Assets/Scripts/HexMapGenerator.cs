@@ -166,6 +166,10 @@ public class HexMapGenerator : MonoBehaviour
 		Random.InitState(seed);
 
 		cellCount = x * z;
+		// Rendering uses one tabletop datum even when the simulation creates
+		// elevated inland lakes. This keeps high logical lake levels from
+		// becoming water platforms suspended above the flattened map.
+		HexMetrics.visualWaterLevel = waterLevel;
 		grid.CreateMap(x, z, wrapping);
 		searchFrontier ??= new HexCellPriorityQueue(grid);
 		for (int i = 0; i < cellCount; i++)
@@ -179,6 +183,7 @@ public class HexMapGenerator : MonoBehaviour
 		CreateClimate();
 		CreateRivers();
 		SetTerrainType();
+		SetLandforms();
 		grid.RefreshAllCells();
 
 		Random.state = originalRandomState;
@@ -905,6 +910,74 @@ public class HexMapGenerator : MonoBehaviour
 				grid.CellData[i].values =
 					cell.values.WithTerrainTypeIndex(terrain);
 			}
+		}
+	}
+
+	void SetLandforms()
+	{
+		bool[] mountainSeeds = new bool[cellCount];
+		for (int i = 0; i < cellCount; i++)
+		{
+			HexCellData cell = grid.CellData[i];
+			if (cell.IsUnderwater || cell.HasRiver || cell.IsSpecial)
+			{
+				continue;
+			}
+			int heightAboveWater = cell.Elevation - waterLevel;
+			float seedOffset = (seed % 997) * 0.013f;
+			float ridgeNoise = 1f - Mathf.Abs(
+				Mathf.PerlinNoise(
+					cell.coordinates.HexX * 0.115f + seedOffset,
+					cell.coordinates.HexZ * 0.115f - seedOffset) * 2f - 1f);
+			// The narrow band supplies the spine; a second pass grows a few
+			// neighboring cells so topology modules form readable mountain chains.
+			mountainSeeds[i] =
+				(heightAboveWater >= 4 && ridgeNoise > 0.965f) ||
+				(heightAboveWater >= 2 && ridgeNoise > 0.985f);
+		}
+
+		for (int i = 0; i < cellCount; i++)
+		{
+			HexCellData cell = grid.CellData[i];
+			if (cell.IsUnderwater || cell.HasRiver || cell.IsSpecial)
+			{
+				cell.landform = HexLandform.Flat;
+			}
+			else
+			{
+				HexHash hash = HexMetrics.SampleHashGrid(grid.CellPositions[i]);
+				int heightAboveWater = cell.Elevation - waterLevel;
+				bool mountain = mountainSeeds[i];
+				if (!mountain && heightAboveWater >= 2 && hash.e < 0.42f)
+				{
+					for (HexDirection d = HexDirection.NE;
+						d <= HexDirection.NW; d++)
+					{
+						if (grid.TryGetCellIndex(
+							cell.coordinates.Step(d), out int neighborIndex) &&
+							mountainSeeds[neighborIndex])
+						{
+							mountain = true;
+							break;
+						}
+					}
+				}
+				if (mountain)
+				{
+					cell.landform = HexLandform.Mountain;
+				}
+				else if (
+					(heightAboveWater >= 1 && hash.b < 0.34f) ||
+					hash.b < 0.08f)
+				{
+					cell.landform = HexLandform.Hill;
+				}
+				else
+				{
+					cell.landform = HexLandform.Flat;
+				}
+			}
+			grid.CellData[i] = cell;
 		}
 	}
 

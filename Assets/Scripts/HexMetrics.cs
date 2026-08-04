@@ -97,6 +97,12 @@ public static class HexMetrics
 	public const float waterElevationOffset = -0.5f;
 
 	/// <summary>
+	/// Shared visual datum for the flattened strategy-map surface. Simulation
+	/// elevation and local lake levels remain independent gameplay data.
+	/// </summary>
+	public static int visualWaterLevel = 3;
+
+	/// <summary>
 	/// Height of walls.
 	/// </summary>
 	public const float wallHeight = 4f;

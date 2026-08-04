@@ -22,6 +22,7 @@ public class HexMapEditor : MonoBehaviour
 	int activeUrbanLevel, activeFarmLevel, activePlantLevel, activeSpecialIndex;
 
 	int activeTerrainTypeIndex;
+	HexLandform activeLandform;
 
 	int brushSize;
 
@@ -29,6 +30,7 @@ public class HexMapEditor : MonoBehaviour
 	bool applyWaterLevel = true;
 
 	bool applyUrbanLevel, applyFarmLevel, applyPlantLevel, applySpecialIndex;
+	bool applyLandform;
 
 	enum OptionalToggle
 	{
@@ -100,6 +102,7 @@ public class HexMapEditor : MonoBehaviour
 
 	void Update()
 	{
+		HandleLandformShortcuts();
 		if (!EventSystem.current.IsPointerOverGameObject())
 		{
 			if (Input.GetMouseButton(0))
@@ -131,6 +134,38 @@ public class HexMapEditor : MonoBehaviour
 			ClearCellHighlightData();
 		}
 		previousCellIndex = -1;
+	}
+
+	void HandleLandformShortcuts()
+	{
+		if (Input.GetKeyDown(KeyCode.Alpha0))
+		{
+			applyLandform = false;
+		}
+		else if (Input.GetKeyDown(KeyCode.Alpha1))
+		{
+			activeLandform = HexLandform.Flat;
+			applyLandform = true;
+		}
+		else if (Input.GetKeyDown(KeyCode.Alpha2))
+		{
+			activeLandform = HexLandform.Hill;
+			applyLandform = true;
+		}
+		else if (Input.GetKeyDown(KeyCode.Alpha3))
+		{
+			activeLandform = HexLandform.Mountain;
+			applyLandform = true;
+		}
+	}
+
+	void OnGUI()
+	{
+		string active = applyLandform ? activeLandform.ToString() : "Off";
+		GUI.Box(
+			new Rect(Screen.width - 228f, 12f, 216f, 68f),
+			$"Landform prototype  [current: {active}]\n" +
+			"0 Off   1 Flat   2 Hill   3 Mountain");
 	}
 
 	HexCell GetCellUnderCursor() =>
@@ -247,6 +282,10 @@ public class HexMapEditor : MonoBehaviour
 			if (activeTerrainTypeIndex >= 0)
 			{
 				cell.SetTerrainTypeIndex(activeTerrainTypeIndex);
+			}
+			if (applyLandform)
+			{
+				cell.SetLandform(activeLandform);
 			}
 			if (applyElevation)
 			{
