@@ -33,8 +33,6 @@ float _HexHFOriginalBlend;
 float _HexHFOriginalStampScale;
 float _HexHFOriginalHeightScale;
 float _HexHFOriginalHeightLod;
-float _HexHFOriginalShadowStrength;
-float4 _HexHFOriginalShadowOffsets;
 
 #define HF_ORIGINAL_DIRT 0.0
 #define HF_ORIGINAL_PLAINS 1.0

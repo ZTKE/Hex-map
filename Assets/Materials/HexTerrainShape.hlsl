@@ -848,27 +848,4 @@ float3 HF_EvaluateOriginalDiffuse(float cellIndex, float2 localPosition)
 			HFOriginalUV(localPosition, rootCell.angle));
 }
 
-float HF_EvaluateOriginalBakedLight(
-	float cellIndex, float2 localPosition, float centerBakedHeight)
-{
-	HFReliefSurface offset1 = HF_EvaluateOriginalRelief(
-		cellIndex, localPosition + _HexHFOriginalShadowOffsets.xy);
-	HFReliefSurface offset2 = HF_EvaluateOriginalRelief(
-		cellIndex, localPosition + _HexHFOriginalShadowOffsets.zw);
-
-	float baseHeight = centerBakedHeight;
-	float helperHeight1 = offset1.bakedHeight;
-	float helperHeight2 = offset2.bakedHeight;
-	float strength = _HexHFOriginalShadowStrength;
-	float light1 = saturate(baseHeight - helperHeight1) * strength * 0.5;
-	float shadow1 = saturate(helperHeight1 - baseHeight) * strength;
-	light1 *= saturate(baseHeight - 0.5) * 3.0;
-	float light2 = saturate(baseHeight - helperHeight2) * strength * 0.5;
-	float shadow2 = saturate(helperHeight2 - baseHeight) * strength;
-	light2 *= saturate(baseHeight - 0.5) * 3.0;
-	float ovenLight = max(light1, light2) -
-		(shadow1 + shadow2) * 0.5 + 0.5;
-	return ((ovenLight - 0.5) * 1.3) + 1.1;
-}
-
 #endif

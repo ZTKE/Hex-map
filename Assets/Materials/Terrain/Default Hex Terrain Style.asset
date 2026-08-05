@@ -31,8 +31,6 @@ MonoBehaviour:
   hfOriginalStampScale: 1.6
   hfOriginalHeightScale: 16
   hfOriginalHeightLod: 2
-  hfOriginalShadowStrength: 12
-  hfOriginalShadowOffsets: {x: 0.14552, y: -0.03638, z: 0.29104, w: -0.07276}
   hfDirtDiffuse: {fileID: 2800000, guid: 137cb0679adafb344a419db9246b6a1a, type: 3}
   hfDirtHeight: {fileID: 2800000, guid: e906119e70c4f61409d0ef08b1be048b, type: 3}
   hfDirtMixer: {fileID: 2800000, guid: 5355ced6bddd47f4ab466b6ad891c4ae, type: 3}

@@ -16,8 +16,8 @@ art, which is sampled only by the GPU.
 - Stamps overlap at HF's original 1.6-radius scale. The maximum mixer plus
   missing-strength rule removes hard hex borders.
 - Height samples use the mip footprint equivalent to HF Oven's downsample and
-  Gaussian pass. The two original offset-height samples and shadow strength 12
-  reproduce `3ShadowsAndHeightShader` / `4DiffuseShader` lighting.
+  Gaussian pass. HF's fixed-direction offset-height shadow is intentionally
+  disabled; URP's main light and shadow map provide the terrain lighting.
 - Diffuse stamps are reconstructed per fragment, matching the resolution of
   HF's baked diffuse instead of interpolating colour across tessellation
   triangles.

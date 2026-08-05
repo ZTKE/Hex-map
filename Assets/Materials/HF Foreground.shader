@@ -92,12 +92,6 @@ Shader "Hex Map/HF Foreground"
 				// middle height band of the final baked terrain.
 				output.heightGate =
 					relief.bakedHeight > 0.495 && relief.bakedHeight < 0.75 ? 1.0h : 0.0h;
-				float bakedLight = HF_EvaluateOriginalBakedLight(
-					input.cellIndices.x, input.localPosition, relief.bakedHeight);
-				float ovenLight = (bakedLight - 1.1) / 1.3 + 0.5;
-				float foregroundLight = clamp(
-					(ovenLight - 0.5) * 5.0 + 1.0, 0.6, 1.5);
-				output.color.rgb *= foregroundLight;
 				output.fogFactor = ComputeFogFactor(output.positionCS.z);
 				return output;
 			}

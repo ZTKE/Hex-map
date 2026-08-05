@@ -117,7 +117,6 @@ Shader "Hex Map/Relief"
 				float4 localData : TEXCOORD5;
 				half fogFactor : TEXCOORD6;
 				float2 localPosition : TEXCOORD7;
-				half hfBakedLight : TEXCOORD8;
 			};
 
 			TessControlPoint Vert(Attributes input)
@@ -210,9 +209,6 @@ Shader "Hex Map/Relief"
 					surface.moduleUV, surface.moduleIndex, 0.0);
 				output.fogFactor = ComputeFogFactor(positionInputs.positionCS.z);
 				output.localPosition = localPosition;
-				output.hfBakedLight = _HexHFOriginalBlend > 0.999 ?
-					HF_EvaluateOriginalBakedLight(
-						cellIndices.x, localPosition, surface.bakedHeight) : 1.0;
 				return output;
 			}
 
@@ -440,7 +436,6 @@ Shader "Hex Map/Relief"
 				{
 					half3 color = HF_EvaluateOriginalDiffuse(
 						input.cellIndices.x, input.localPosition);
-					color *= max(input.hfBakedLight, 0.0h);
 
 					bool editMode = false;
 					#ifdef _HEX_MAP_EDIT_MODE

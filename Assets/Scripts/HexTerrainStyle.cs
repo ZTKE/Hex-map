@@ -121,11 +121,6 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[Min(0.1f)] public float hfOriginalHeightScale = 16f;
 	[Tooltip("Mip level matching HF Oven's downsample plus Gaussian height blur.")]
 	[Range(0f, 4f)] public float hfOriginalHeightLod = 2f;
-	[Tooltip("Exact strength from HF's 3ShadowsAndHeight material.")]
-	[Range(0f, 24f)] public float hfOriginalShadowStrength = 12f;
-	[Tooltip("HF Oven's two camera offsets in normalized hex-radius space.")]
-	public Vector4 hfOriginalShadowOffsets = new(
-		0.14552f, -0.03638f, 0.29104f, -0.07276f);
 	public Texture2D hfDirtDiffuse;
 	public Texture2D hfDirtHeight;
 	public Texture2D hfDirtMixer;
@@ -444,10 +439,6 @@ public sealed class HexTerrainStyle : ScriptableObject
 		Shader.SetGlobalFloat("_HexHFOriginalStampScale", hfOriginalStampScale);
 		Shader.SetGlobalFloat("_HexHFOriginalHeightScale", hfOriginalHeightScale);
 		Shader.SetGlobalFloat("_HexHFOriginalHeightLod", hfOriginalHeightLod);
-		Shader.SetGlobalFloat(
-			"_HexHFOriginalShadowStrength", hfOriginalShadowStrength);
-		Shader.SetGlobalVector(
-			"_HexHFOriginalShadowOffsets", hfOriginalShadowOffsets);
 		Shader.SetGlobalFloat("_HexHFStampScale", hfStampScale);
 		Shader.SetGlobalFloat(
 			"_HexHFBlendStrength", hfTerrainMixer ? hfTerrainBlend : 0f);
