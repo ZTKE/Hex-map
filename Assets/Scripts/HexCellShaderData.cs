@@ -10,13 +10,19 @@ public class HexCellShaderData : MonoBehaviour
 
 	Texture2D cellTexture;
 
+	Texture2D terrainShapeTexture;
+
 	Color32[] cellTextureData;
+
+	Color32[] terrainShapeTextureData;
 
 	bool[] visibilityTransitions;
 
 	List<int> transitioningCellIndices = new();
 
 	bool needsVisibilityReset;
+
+	bool terrainShapeDirty;
 
 	public HexGrid Grid { get; set; }
 
@@ -47,9 +53,32 @@ public class HexCellShaderData : MonoBehaviour
 			"_HexCellData_TexelSize",
 			new Vector4(1f / x, 1f / z, x, z));
 
-		if (cellTextureData == null || cellTextureData.Length != x * z)
+		if (terrainShapeTexture)
+		{
+			terrainShapeTexture.Reinitialize(x, z);
+		}
+		else
+		{
+			terrainShapeTexture = new Texture2D(
+				x, z, TextureFormat.RGBA32, false, true)
+			{
+				name = "Hex Terrain Shape Data",
+				filterMode = FilterMode.Point
+			};
+			Shader.SetGlobalTexture(
+				"_HexTerrainShapeData", terrainShapeTexture);
+		}
+		terrainShapeTexture.wrapModeU = Grid.Wrapping ?
+			TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+		terrainShapeTexture.wrapModeV = TextureWrapMode.Clamp;
+		Shader.SetGlobalFloat(
+			"_HexTerrainShapeWrap", Grid.Wrapping ? 1f : 0f);
+
+		if (cellTextureData == null || terrainShapeTextureData == null ||
+			cellTextureData.Length != x * z)
 		{
 			cellTextureData = new Color32[x * z];
+			terrainShapeTextureData = new Color32[x * z];
 			visibilityTransitions = new bool[x * z];
 		}
 		else
@@ -57,11 +86,13 @@ public class HexCellShaderData : MonoBehaviour
 			for (int i = 0; i < cellTextureData.Length; i++)
 			{
 				cellTextureData[i] = new Color32(0, 0, 0, 0);
+				terrainShapeTextureData[i] = new Color32(0, 0, 0, 0);
 				visibilityTransitions[i] = false;
 			}
 		}
 
 		transitioningCellIndices.Clear();
+		terrainShapeDirty = true;
 		enabled = true;
 	}
 
@@ -79,6 +110,87 @@ public class HexCellShaderData : MonoBehaviour
 		data.a = (byte)cell.TerrainTypeIndex;
 		cellTextureData[cellIndex] = data;
 		enabled = true;
+	}
+
+	/// <summary>
+	/// Refresh the compact logical terrain-shape texel of a cell. The texture is
+	/// shared by the complete map, so it replaces per-chunk height maps while
+	/// still allowing the GPU to reconstruct blended relief.
+	/// </summary>
+	/// <param name="cellIndex">Index of the changed cell.</param>
+	public void RefreshTerrainShape(int cellIndex)
+	{
+		if (terrainShapeTextureData == null ||
+			cellIndex < 0 || cellIndex >= terrainShapeTextureData.Length)
+		{
+			return;
+		}
+
+		HexCellData cell = Grid.CellData[cellIndex];
+		int neighborMask = 0;
+		float xx = 0f, xz = 0f, zz = 0f;
+		int matchingNeighbors = 0;
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			if (!Grid.TryGetCellIndex(
+				cell.coordinates.Step(d), out int neighborIndex) ||
+				Grid.CellData[neighborIndex].landform != cell.landform ||
+				cell.landform == HexLandform.Flat)
+			{
+				continue;
+			}
+			neighborMask |= 1 << (int)d;
+			Vector3 direction = HexMetrics.GetSolidEdgeMiddle(d).normalized;
+			xx += direction.x * direction.x;
+			xz += direction.x * direction.z;
+			zz += direction.z * direction.z;
+			matchingNeighbors++;
+		}
+
+		float ridgeAngle = matchingNeighbors == 0 ?
+			(HexMetrics.SampleHashGrid(Grid.CellPositions[cellIndex]).a - 0.5f) *
+				Mathf.PI * 2f :
+			0.5f * Mathf.Atan2(2f * xz, xx - zz);
+		float angle01 = Mathf.Repeat(
+			ridgeAngle / (Mathf.PI * 2f) + 0.5f, 1f);
+		int packedLandformAndAngle =
+			((int)cell.landform << 6) |
+			Mathf.Clamp(Mathf.RoundToInt(angle01 * 63f), 0, 63);
+
+		int riverMask = 0;
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			if (cell.HasRiverThroughEdge(d))
+			{
+				riverMask |= 1 << (int)d;
+			}
+		}
+
+		float surfaceY = Mathf.Clamp(Grid.CellPositions[cellIndex].y, 0f, 30f);
+		terrainShapeTextureData[cellIndex] = new Color32(
+			(byte)packedLandformAndAngle,
+			(byte)neighborMask,
+			(byte)riverMask,
+			(byte)Mathf.RoundToInt(surfaceY * (255f / 30f)));
+		terrainShapeDirty = true;
+		enabled = true;
+	}
+
+	/// <summary>
+	/// Refresh a cell and its one-ring neighbors because their shared mountain
+	/// topology can change together.
+	/// </summary>
+	public void RefreshTerrainShapeWithDependents(int cellIndex)
+	{
+		RefreshTerrainShape(cellIndex);
+		HexCoordinates coordinates = Grid.CellData[cellIndex].coordinates;
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			if (Grid.TryGetCellIndex(coordinates.Step(d), out int neighborIndex))
+			{
+				RefreshTerrainShape(neighborIndex);
+			}
+		}
 	}
 
 	/// <summary>
@@ -142,8 +254,26 @@ public class HexCellShaderData : MonoBehaviour
 		}
 
 		cellTexture.SetPixels32(cellTextureData);
-		cellTexture.Apply();
+		cellTexture.Apply(false, false);
+		if (terrainShapeDirty)
+		{
+			terrainShapeTexture.SetPixels32(terrainShapeTextureData);
+			terrainShapeTexture.Apply(false, false);
+			terrainShapeDirty = false;
+		}
 		enabled = transitioningCellIndices.Count > 0;
+	}
+
+	void OnDestroy()
+	{
+		if (cellTexture)
+		{
+			Destroy(cellTexture);
+		}
+		if (terrainShapeTexture)
+		{
+			Destroy(terrainShapeTexture);
+		}
 	}
 
 	bool UpdateCellData(int index, int delta)

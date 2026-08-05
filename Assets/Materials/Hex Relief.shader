@@ -9,6 +9,12 @@ Shader "Hex Map/Relief"
 		[NoScaleOffset][Normal] _Relief_Rock_Normal ("Relief Rock Normal", 2D) = "bump" {}
 		[NoScaleOffset] _Mountain_Color_Decal ("Mountain Color Decal", 2D) = "white" {}
 		[HideInInspector] _Use_Mountain_Color_Decal ("Use Mountain Color Decal", Float) = 0
+		[NoScaleOffset] _HexMountainMasks ("Logical Mountain Height Masks", 2DArray) = "white" {}
+		_HexReliefTessellation ("Relief Tessellation", Range(1, 16)) = 8
+		_HexReliefTessellationStart ("Tessellation Start Distance", Float) = 80
+		_HexReliefTessellationEnd ("Tessellation End Distance", Float) = 280
+		_HexReliefStampScale ("HF Stamp Overlap", Range(1.01, 1.5)) = 1.22
+		_HexReliefRiverCarve ("River Cut Core / Shoulder", Vector) = (0.07, 0.31, 0, 0)
 	}
 
 	SubShader
@@ -29,9 +35,11 @@ Shader "Hex Map/Relief"
 			Blend SrcAlpha OneMinusSrcAlpha
 
 			HLSLPROGRAM
-			#pragma target 3.5
-			#pragma require 2darray
+			#pragma target 4.6
+			#pragma require tessellation tessHW 2darray
 			#pragma vertex Vert
+			#pragma hull Hull
+			#pragma domain Domain
 			#pragma fragment Frag
 			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
 			#pragma multi_compile_fragment _ _SHADOWS_SOFT
@@ -41,6 +49,7 @@ Shader "Hex Map/Relief"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 			#include "HexCellData.hlsl"
+			#include "HexTerrainShape.hlsl"
 			#include "Hex Civilization Style.hlsl"
 
 			TEXTURE2D_ARRAY(_Terrain_Textures);
@@ -56,6 +65,9 @@ Shader "Hex Map/Relief"
 			TEXTURE2D(_Mountain_Color_Decal);
 			SAMPLER(sampler_Mountain_Color_Decal);
 			float _Use_Mountain_Color_Decal;
+			float _HexReliefTessellation;
+			float _HexReliefTessellationStart;
+			float _HexReliefTessellationEnd;
 			float _HexTerrainAtlasBlend;
 			float _HexTerrainAtlasTiling;
 			float _HexTerrainMacroVariation;
@@ -74,10 +86,22 @@ Shader "Hex Map/Relief"
 			{
 				float4 positionOS : POSITION;
 				float3 normalOS : NORMAL;
-				float4 relief : TEXCOORD1;
-				float3 cellIndices : TEXCOORD2;
-				float4 style : TEXCOORD3;
-				float4 localData : TEXCOORD4;
+				float3 cellIndices : TEXCOORD1;
+				float2 localPosition : TEXCOORD2;
+			};
+
+			struct TessControlPoint
+			{
+				float4 positionOS : INTERNALTESSPOS;
+				float3 normalOS : NORMAL;
+				float3 cellIndices : TEXCOORD1;
+				float2 localPosition : TEXCOORD2;
+			};
+
+			struct TessellationFactors
+			{
+				float edge[3] : SV_TessFactor;
+				float inside : SV_InsideTessFactor;
 			};
 
 			struct Varyings
@@ -92,18 +116,94 @@ Shader "Hex Map/Relief"
 				half fogFactor : TEXCOORD6;
 			};
 
-			Varyings Vert(Attributes input)
+			TessControlPoint Vert(Attributes input)
+			{
+				TessControlPoint output;
+				output.positionOS = input.positionOS;
+				output.normalOS = input.normalOS;
+				output.cellIndices = input.cellIndices;
+				output.localPosition = input.localPosition;
+				return output;
+			}
+
+			float ReliefTessellationFactor(float3 positionOS)
+			{
+				float3 positionWS = TransformObjectToWorld(positionOS);
+				float distanceToCamera = distance(positionWS, _WorldSpaceCameraPos);
+				float distanceFade = saturate(
+					(distanceToCamera - _HexReliefTessellationStart) /
+					max(_HexReliefTessellationEnd - _HexReliefTessellationStart, 1.0));
+				return max(1.0, lerp(_HexReliefTessellation, 1.0, distanceFade));
+			}
+
+			TessellationFactors PatchConstants(
+				InputPatch<TessControlPoint, 3> patch)
+			{
+				TessellationFactors factors;
+				factors.edge[0] = ReliefTessellationFactor(
+					(patch[1].positionOS.xyz + patch[2].positionOS.xyz) * 0.5);
+				factors.edge[1] = ReliefTessellationFactor(
+					(patch[2].positionOS.xyz + patch[0].positionOS.xyz) * 0.5);
+				factors.edge[2] = ReliefTessellationFactor(
+					(patch[0].positionOS.xyz + patch[1].positionOS.xyz) * 0.5);
+				factors.inside = ReliefTessellationFactor(
+					(patch[0].positionOS.xyz + patch[1].positionOS.xyz +
+					patch[2].positionOS.xyz) / 3.0);
+				return factors;
+			}
+
+			[domain("tri")]
+			[outputcontrolpoints(3)]
+			[outputtopology("triangle_cw")]
+			[partitioning("fractional_even")]
+			[patchconstantfunc("PatchConstants")]
+			TessControlPoint Hull(
+				InputPatch<TessControlPoint, 3> patch,
+				uint controlPointId : SV_OutputControlPointID)
+			{
+				return patch[controlPointId];
+			}
+
+			[domain("tri")]
+			Varyings Domain(
+				TessellationFactors factors,
+				const OutputPatch<TessControlPoint, 3> patch,
+				float3 barycentricCoordinates : SV_DomainLocation)
 			{
 				Varyings output;
-				VertexPositionInputs positionInputs = GetVertexPositionInputs(input.positionOS.xyz);
-				VertexNormalInputs normalInputs = GetVertexNormalInputs(input.normalOS);
+				float4 positionOS =
+					patch[0].positionOS * barycentricCoordinates.x +
+					patch[1].positionOS * barycentricCoordinates.y +
+					patch[2].positionOS * barycentricCoordinates.z;
+				float3 normalOS = normalize(
+					patch[0].normalOS * barycentricCoordinates.x +
+					patch[1].normalOS * barycentricCoordinates.y +
+					patch[2].normalOS * barycentricCoordinates.z);
+				float3 cellIndices =
+					patch[0].cellIndices * barycentricCoordinates.x +
+					patch[1].cellIndices * barycentricCoordinates.y +
+					patch[2].cellIndices * barycentricCoordinates.z;
+				float2 localPosition =
+					patch[0].localPosition * barycentricCoordinates.x +
+					patch[1].localPosition * barycentricCoordinates.y +
+					patch[2].localPosition * barycentricCoordinates.z;
+
+				HFReliefSurface surface = HF_EvaluateRelief(
+					cellIndices.x, localPosition);
+				positionOS.y = surface.y;
+				VertexPositionInputs positionInputs =
+					GetVertexPositionInputs(positionOS.xyz);
+				VertexNormalInputs normalInputs = GetVertexNormalInputs(normalOS);
 				output.positionCS = positionInputs.positionCS;
 				output.positionWS = positionInputs.positionWS;
 				output.normalWS = normalInputs.normalWS;
-				output.relief = input.relief;
-				output.cellIndices = input.cellIndices;
-				output.style = input.style;
-				output.localData = input.localData;
+				output.relief = float4(
+					surface.height01, surface.landform,
+					surface.terrain, surface.coverage);
+				output.cellIndices = cellIndices;
+				output.style = surface.style;
+				output.localData = float4(
+					surface.moduleUV, surface.moduleIndex, 0.0);
 				output.fogFactor = ComputeFogFactor(positionInputs.positionCS.z);
 				return output;
 			}
@@ -181,6 +281,41 @@ Shader "Hex Map/Relief"
 					1.0 + _HexTerrainMacroVariation * 0.55,
 					Fbm(positionWS.xz * 0.018));
 				return surface;
+			}
+
+			// Relief used to sample only the terrain type of the strongest height
+			// stamp. The flat surface below it already uses HF's neighbourhood mixer,
+			// so the two passes could disagree at biome borders and make a hill look
+			// like a separately coloured object. Reconstruct the same compact one-ring
+			// mix for the relief surface as well.
+			half3 SampleHFMixedReliefGround(
+				float3 positionWS, float fallbackTerrain)
+			{
+				half3 fallback = SampleTerrainSurface(
+					positionWS, fallbackTerrain);
+				HexGridData grid = GetHexGridData(positionWS.xz);
+				float2 hexPosition = WoldToHexSpace(positionWS.xz);
+				float2 local = hexPosition - grid.cellCenter;
+				HFTerrainMixWeights mix = HFMixEvaluateNeighborhood(
+					grid.cellOffsetCoordinates, local);
+
+				half3 mixed = 0.0;
+				if (mix.terrain0123.x > 0.0001)
+					mixed += SampleTerrainSurface(positionWS, 0.0) *
+						mix.terrain0123.x;
+				if (mix.terrain0123.y > 0.0001)
+					mixed += SampleTerrainSurface(positionWS, 1.0) *
+						mix.terrain0123.y;
+				if (mix.terrain0123.z > 0.0001)
+					mixed += SampleTerrainSurface(positionWS, 2.0) *
+						mix.terrain0123.z;
+				if (mix.terrain0123.w > 0.0001)
+					mixed += SampleTerrainSurface(positionWS, 3.0) *
+						mix.terrain0123.w;
+				if (mix.terrain4 > 0.0001)
+					mixed += SampleTerrainSurface(positionWS, 4.0) * mix.terrain4;
+				return lerp(
+					fallback, mixed, HFMixNeighborhoodBlendStrength(mix));
 			}
 
 			half3 GetTriplanarWeights(half3 normalWS)
@@ -273,8 +408,19 @@ Shader "Hex Map/Relief"
 				float landform = input.relief.y;
 				float terrainIndex = floor(input.relief.z + 0.5);
 				int biomeIndex = clamp((int)terrainIndex, 0, 4);
-				float edgeFade = saturate(input.relief.w);
 				float isMountain = step(1.5, landform);
+				// Coverage alone describes the broad logical stamp. Multiplying it by
+				// actual relief height prevents a nearly-flat transparent sheet from
+				// revealing the underlying hex patch through different lighting.
+				float hillPresence = smoothstep(0.08, 0.24, height01);
+				float mountainPresence = smoothstep(0.025, 0.10, height01);
+				float reliefPresence = lerp(
+					hillPresence, mountainPresence, isMountain);
+				// Once a real height exists it is the only authoritative footprint.
+				// Reusing the broad logical coverage here was what left visible stamp
+				// silhouettes around otherwise correctly blended terrain.
+				float edgeFade = reliefPresence;
+				clip(edgeFade - 0.025);
 
 				half3 faceNormal = normalize(cross(
 					ddy(input.positionWS), ddx(input.positionWS)));
@@ -285,7 +431,8 @@ Shader "Hex Map/Relief"
 					vertexNormal, faceNormal, facetStrength));
 				float slope = 1.0 - saturate(normalWS.y);
 
-				half3 ground = SampleTerrainSurface(input.positionWS, terrainIndex);
+				half3 ground = SampleHFMixedReliefGround(
+					input.positionWS, terrainIndex);
 				float macroNoise = Fbm(
 					input.positionWS.xz * 0.055 + input.style.xy * 19.0);
 				float fineNoise = Fbm(
@@ -303,9 +450,13 @@ Shader "Hex Map/Relief"
 					terrainIndex < 2.5 ? half3(0.55, 0.48, 0.29) :
 					terrainIndex < 3.5 ? half3(0.43, 0.36, 0.27) :
 					half3(0.84, 0.87, 0.87);
-				half hillEarthBlend = terrainIndex > 3.5 ? 0.46 : 0.32;
+				// The biome remains visible on the crest, but it should emerge from
+				// the shared ground colour instead of recolouring the entire mound.
+				half hillEarthBlend = terrainIndex > 3.5 ? 0.25 : 0.15;
 				half3 hillTop = lerp(ground, hillEarth, hillEarthBlend);
-				color = lerp(color, hillTop, hillHigh);
+				float hillMaterialPresence = hillHigh *
+					smoothstep(0.24, 0.68, edgeFade);
+				color = lerp(color, hillTop, hillMaterialPresence);
 
 				half3 scree;
 				half3 lowRock;
@@ -391,11 +542,13 @@ Shader "Hex Map/Relief"
 					lerp(0.88, 1.0, rockValue);
 				color = lerp(color, snowMaterial, snow);
 
-				// A soft baked-looking contact shadow anchors the sculpted module to
-				// the painted tile, which is a key part of the tabletop-diorama read.
-				float contactAO = 1.0 - smoothstep(0.025, 0.19, height01) *
-					smoothstep(0.03, 0.28, edgeFade);
-				color *= 1.0 - contactAO * lerp(0.13, 0.16, isMountain);
+				// Keep contact darkening in a narrow low-height band. The previous
+				// inverted mask darkened the complete low relief skirt and exposed its
+				// stamp/hex silhouette even when geometry was almost flat.
+				float contactBand = smoothstep(0.025, 0.07, height01) *
+					(1.0 - smoothstep(0.14, 0.28, height01));
+				float contactAO = contactBand * smoothstep(0.16, 0.5, edgeFade);
+				color *= 1.0 - contactAO * lerp(0.055, 0.085, isMountain);
 
 				bool editMode = false;
 				#ifdef _HEX_MAP_EDIT_MODE
@@ -420,7 +573,7 @@ Shader "Hex Map/Relief"
 					color, input.positionWS, rawDiffuse,
 					lerp(0.86, 1.0, isMountain));
 				color = MixFog(color, input.fogFactor);
-				return half4(color, smoothstep(0.12, 0.48, edgeFade));
+				return half4(color, smoothstep(0.08, 0.42, edgeFade));
 			}
 			ENDHLSL
 		}
@@ -435,21 +588,44 @@ Shader "Hex Map/Relief"
 			Cull Back
 
 			HLSLPROGRAM
-			#pragma target 3.5
+			#pragma target 4.6
+			#pragma require tessellation tessHW 2darray
 			#pragma vertex ShadowVert
+			#pragma hull ShadowHull
+			#pragma domain ShadowDomain
 			#pragma fragment ShadowFrag
 			#pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+			#include "HexCellData.hlsl"
+			#include "HexTerrainShape.hlsl"
 
 			float3 _LightDirection;
 			float3 _LightPosition;
+			float _HexReliefTessellation;
+			float _HexReliefTessellationStart;
+			float _HexReliefTessellationEnd;
 
 			struct ShadowAttributes
 			{
 				float4 positionOS : POSITION;
 				float3 normalOS : NORMAL;
-				float4 relief : TEXCOORD1;
+				float3 cellIndices : TEXCOORD1;
+				float2 localPosition : TEXCOORD2;
+			};
+
+			struct ShadowControlPoint
+			{
+				float4 positionOS : INTERNALTESSPOS;
+				float3 normalOS : NORMAL;
+				float3 cellIndices : TEXCOORD1;
+				float2 localPosition : TEXCOORD2;
+			};
+
+			struct ShadowTessellationFactors
+			{
+				float edge[3] : SV_TessFactor;
+				float inside : SV_InsideTessFactor;
 			};
 
 			struct ShadowVaryings
@@ -458,11 +634,78 @@ Shader "Hex Map/Relief"
 				float edgeFade : TEXCOORD0;
 			};
 
-			ShadowVaryings ShadowVert(ShadowAttributes input)
+			ShadowControlPoint ShadowVert(ShadowAttributes input)
+			{
+				ShadowControlPoint output;
+				output.positionOS = input.positionOS;
+				output.normalOS = input.normalOS;
+				output.cellIndices = input.cellIndices;
+				output.localPosition = input.localPosition;
+				return output;
+			}
+
+			float ShadowTessellationFactor(float3 positionOS)
+			{
+				float3 positionWS = TransformObjectToWorld(positionOS);
+				float distanceToCamera = distance(positionWS, _WorldSpaceCameraPos);
+				float distanceFade = saturate(
+					(distanceToCamera - _HexReliefTessellationStart) /
+					max(_HexReliefTessellationEnd - _HexReliefTessellationStart, 1.0));
+				return max(1.0, lerp(_HexReliefTessellation, 1.0, distanceFade));
+			}
+
+			ShadowTessellationFactors ShadowPatchConstants(
+				InputPatch<ShadowControlPoint, 3> patch)
+			{
+				ShadowTessellationFactors factors;
+				factors.edge[0] = ShadowTessellationFactor(
+					(patch[1].positionOS.xyz + patch[2].positionOS.xyz) * 0.5);
+				factors.edge[1] = ShadowTessellationFactor(
+					(patch[2].positionOS.xyz + patch[0].positionOS.xyz) * 0.5);
+				factors.edge[2] = ShadowTessellationFactor(
+					(patch[0].positionOS.xyz + patch[1].positionOS.xyz) * 0.5);
+				factors.inside = ShadowTessellationFactor(
+					(patch[0].positionOS.xyz + patch[1].positionOS.xyz +
+					patch[2].positionOS.xyz) / 3.0);
+				return factors;
+			}
+
+			[domain("tri")]
+			[outputcontrolpoints(3)]
+			[outputtopology("triangle_cw")]
+			[partitioning("fractional_even")]
+			[patchconstantfunc("ShadowPatchConstants")]
+			ShadowControlPoint ShadowHull(
+				InputPatch<ShadowControlPoint, 3> patch,
+				uint controlPointId : SV_OutputControlPointID)
+			{
+				return patch[controlPointId];
+			}
+
+			[domain("tri")]
+			ShadowVaryings ShadowDomain(
+				ShadowTessellationFactors factors,
+				const OutputPatch<ShadowControlPoint, 3> patch,
+				float3 barycentricCoordinates : SV_DomainLocation)
 			{
 				ShadowVaryings output;
-				float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-				float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
+				float4 positionOS =
+					patch[0].positionOS * barycentricCoordinates.x +
+					patch[1].positionOS * barycentricCoordinates.y +
+					patch[2].positionOS * barycentricCoordinates.z;
+				float3 cellIndices =
+					patch[0].cellIndices * barycentricCoordinates.x +
+					patch[1].cellIndices * barycentricCoordinates.y +
+					patch[2].cellIndices * barycentricCoordinates.z;
+				float2 localPosition =
+					patch[0].localPosition * barycentricCoordinates.x +
+					patch[1].localPosition * barycentricCoordinates.y +
+					patch[2].localPosition * barycentricCoordinates.z;
+				HFReliefSurface surface = HF_EvaluateRelief(
+					cellIndices.x, localPosition);
+				positionOS.y = surface.y;
+				float3 positionWS = TransformObjectToWorld(positionOS.xyz);
+				float3 normalWS = TransformObjectToWorldNormal(float3(0.0, 1.0, 0.0));
 				#if _CASTING_PUNCTUAL_LIGHT_SHADOW
 					float3 lightDirectionWS = normalize(_LightPosition - positionWS);
 				#else
@@ -476,7 +719,11 @@ Shader "Hex Map/Relief"
 					positionCS.z = max(positionCS.z, UNITY_NEAR_CLIP_VALUE);
 				#endif
 				output.positionCS = positionCS;
-				output.edgeFade = input.relief.w;
+				float isMountain = step(1.5, surface.landform);
+				float hillPresence = smoothstep(0.08, 0.24, surface.height01);
+				float mountainPresence = smoothstep(0.025, 0.10, surface.height01);
+				output.edgeFade = lerp(
+					hillPresence, mountainPresence, isMountain);
 				return output;
 			}
 

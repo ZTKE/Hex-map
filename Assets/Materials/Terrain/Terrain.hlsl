@@ -1,5 +1,6 @@
 ﻿#include "../HexCellData.hlsl"
 
+#include "../HFTerrainBlend.hlsl"
 #include "../Hex Civilization Style.hlsl"
 
 TEXTURE2D(_HexTerrainStyleAtlas);
@@ -102,7 +103,33 @@ float3 SampleStrategyTerrainAtlas(float3 worldPosition, float terrainIndex)
 	return lerp(a, b, 0.16 + blend * 0.28);
 }
 
-// Sample appropriate terrain texture and apply cell weights and visibility.
+// Sample one biome independently of the CPU mesh's vertex ownership. This is
+// also used by the HF logical mixer, which chooses ownership from soft stamps.
+float4 SampleTerrainSurface(
+	UnityTexture2DArray TerrainTextures,
+	float3 WorldPosition,
+	float terrainIndex)
+{
+	float2 uvA = WorldPosition.xz * (2 * TILING_SCALE);
+	float2 uvB = TerrainStyleRotateUV(WorldPosition.xz) *
+		(3.73 * TILING_SCALE) + float2(4.37, 1.91);
+	float4 a = TerrainTextures.Sample(
+		TerrainTextures.samplerstate, float3(uvA, terrainIndex));
+	float4 b = TerrainTextures.Sample(
+		TerrainTextures.samplerstate, float3(uvB, terrainIndex));
+	float macro = TerrainStyleValueNoise(WorldPosition.xz * 0.035 + 11.7);
+	float4 c = lerp(a, b, 0.2 + macro * 0.28);
+	float3 authored = SampleStrategyTerrainAtlas(WorldPosition, terrainIndex);
+	c.rgb = lerp(c.rgb, authored, saturate(_HexTerrainAtlasBlend));
+	c.rgb *= lerp(
+		1.0 - _HexTerrainMacroVariation,
+		1.0 + _HexTerrainMacroVariation * 0.55,
+		TerrainStyleFbm(WorldPosition.xz * 0.018));
+	return c;
+}
+
+// Retain the original vertex-weight path as a fallback for underwater cells
+// and for styles that do not provide the shared HF mixer atlas.
 float4 GetTerrainColor(
 	UnityTexture2DArray TerrainTextures,
 	float3 WorldPosition,
@@ -111,22 +138,45 @@ float4 GetTerrainColor(
 	float4 Visibility,
 	int index)
 {
-	float2 uvA = WorldPosition.xz * (2 * TILING_SCALE);
-	float2 uvB = TerrainStyleRotateUV(WorldPosition.xz) *
-		(3.73 * TILING_SCALE) + float2(4.37, 1.91);
-	float4 a = TerrainTextures.Sample(
-		TerrainTextures.samplerstate, float3(uvA, Terrain[index]));
-	float4 b = TerrainTextures.Sample(
-		TerrainTextures.samplerstate, float3(uvB, Terrain[index]));
-	float macro = TerrainStyleValueNoise(WorldPosition.xz * 0.035 + 11.7);
-	float4 c = lerp(a, b, 0.2 + macro * 0.28);
-	float3 authored = SampleStrategyTerrainAtlas(WorldPosition, Terrain[index]);
-	c.rgb = lerp(c.rgb, authored, saturate(_HexTerrainAtlasBlend));
-	c.rgb *= lerp(
-		1.0 - _HexTerrainMacroVariation,
-		1.0 + _HexTerrainMacroVariation * 0.55,
-		TerrainStyleFbm(WorldPosition.xz * 0.018));
-	return c * (Weights[index] * Visibility[index]);
+	return SampleTerrainSurface(
+		TerrainTextures, WorldPosition, Terrain[index]) *
+		(Weights[index] * Visibility[index]);
+}
+
+float4 GetHFMixedTerrainColor(
+	UnityTexture2DArray TerrainTextures,
+	float3 WorldPosition,
+	float3 MeshWeights,
+	float4 Visibility,
+	out float blendStrength)
+{
+	HexGridData grid = GetHexGridData(WorldPosition.xz);
+	float2 hexPosition = WoldToHexSpace(WorldPosition.xz);
+	float2 local = hexPosition - grid.cellCenter;
+	HFTerrainMixWeights mix = HFMixEvaluateNeighborhood(
+		grid.cellOffsetCoordinates, local);
+
+	float4 mixed = 0.0;
+	if (mix.terrain0123.x > 0.0001)
+		mixed += SampleTerrainSurface(
+			TerrainTextures, WorldPosition, 0.0) * mix.terrain0123.x;
+	if (mix.terrain0123.y > 0.0001)
+		mixed += SampleTerrainSurface(
+			TerrainTextures, WorldPosition, 1.0) * mix.terrain0123.y;
+	if (mix.terrain0123.z > 0.0001)
+		mixed += SampleTerrainSurface(
+			TerrainTextures, WorldPosition, 2.0) * mix.terrain0123.z;
+	if (mix.terrain0123.w > 0.0001)
+		mixed += SampleTerrainSurface(
+			TerrainTextures, WorldPosition, 3.0) * mix.terrain0123.w;
+	if (mix.terrain4 > 0.0001)
+		mixed += SampleTerrainSurface(
+			TerrainTextures, WorldPosition, 4.0) * mix.terrain4;
+
+	float meshVisibility = dot(MeshWeights, Visibility.xyz);
+	mixed *= meshVisibility;
+	blendStrength = HFMixNeighborhoodBlendStrength(mix);
+	return mixed;
 }
 
 // Apply an 80% darkening grid outline at hex center distance 0.965-1.
@@ -176,6 +226,10 @@ void GetFragmentData_float(
 			TerrainTextures, WorldPosition, Terrain, Weights, Visibility, 1) +
 		GetTerrainColor(
 			TerrainTextures, WorldPosition, Terrain, Weights, Visibility, 2);
+	float hfBlend;
+	float4 hfMixed = GetHFMixedTerrainColor(
+		TerrainTextures, WorldPosition, Weights, Visibility, hfBlend);
+	c = lerp(c, hfMixed, hfBlend);
 
 	BaseColor = ColorizeSubmergence(c.rgb, WorldPosition.y, Terrain.w);
 	float paintedLight = 0.52 +

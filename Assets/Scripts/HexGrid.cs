@@ -407,8 +407,11 @@ public class HexGrid : MonoBehaviour
 	/// Refresh the chunk the cell is part of.
 	/// </summary>
 	/// <param name="cellIndex">Cell index.</param>
-	public void RefreshCell(int cellIndex) =>
+	public void RefreshCell(int cellIndex)
+	{
 		cellGridChunks[cellIndex].Refresh();
+		cellShaderData.RefreshTerrainShapeWithDependents(cellIndex);
+	}
 
 	/// <summary>
 	/// Refresh the cell, all its neighbors, and its unit.
@@ -416,6 +419,7 @@ public class HexGrid : MonoBehaviour
 	/// <param name="cellIndex">Cell index.</param>
 	public void RefreshCellWithDependents (int cellIndex)
 	{
+		cellShaderData.RefreshTerrainShapeWithDependents(cellIndex);
 		HexGridChunk chunk = cellGridChunks[cellIndex];
 		chunk.Refresh();
 		HexCoordinates coordinates = CellData[cellIndex].coordinates;
@@ -445,9 +449,12 @@ public class HexGrid : MonoBehaviour
 	{
 		Vector3 position = CellPositions[cellIndex];
 		position.y = CellData[cellIndex].VisualElevation * HexMetrics.elevationStep;
-		position.y +=
-			(HexMetrics.SampleNoise(position).y * 2f - 1f) *
-			HexMetrics.elevationPerturbStrength;
+		// VisualElevation already provides the deliberate dry-land, shallow-shelf,
+		// and deep-ocean tiers. Adding independent Y noise here turned every solid
+		// hex interior into a slightly different-height plate, while the connection
+		// mesh had to slope between them. Keep height perfectly deterministic; the
+		// existing XZ perturbation still breaks up the cell outline and relief owns
+		// all intentional hills and mountains.
 		CellPositions[cellIndex] = position;
 
 		RectTransform rectTransform = cellUIRects[cellIndex];
@@ -522,6 +529,7 @@ public class HexGrid : MonoBehaviour
 			SearchData[i].searchPhase = 0;
 			RefreshCellPosition(i);
 			ShaderData.RefreshTerrain(i);
+			ShaderData.RefreshTerrainShape(i);
 			ShaderData.RefreshVisibility(i);
 		}
 	}

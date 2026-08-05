@@ -205,7 +205,7 @@ public struct HexCell
 		if (grid.CellData[index].landform != landform)
 		{
 			grid.CellData[index].landform = landform;
-			grid.RefreshCell(index);
+			grid.RefreshCellWithDependents(index);
 		}
 	}
 

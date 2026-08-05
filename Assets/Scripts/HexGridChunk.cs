@@ -114,17 +114,10 @@ public class HexGridChunk : MonoBehaviour
 	{
 		HexCellData cell = Grid.CellData[cellIndex];
 		Vector3 cellPosition = Grid.CellPositions[cellIndex];
-		if (!cell.IsUnderwater && !cell.HasRiver && !cell.HasRoads && !cell.IsSpecial)
+		if (!cell.IsUnderwater && !cell.HasRoads && !cell.IsSpecial &&
+			HasReliefInNeighborhood(cell))
 		{
-			relief.AddCell(
-				cellIndex,
-				cellPosition,
-				cell.landform,
-				cell.TerrainTypeIndex,
-				cell.Elevation,
-				HexMetrics.SampleHashGrid(cellPosition),
-				GetRidgeAngle(cell, cellPosition),
-				GetLandformNeighborMask(cell));
+			relief.AddCell(cellIndex, cellPosition);
 		}
 		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 		{
@@ -144,42 +137,21 @@ public class HexGridChunk : MonoBehaviour
 		}
 	}
 
-	int GetLandformNeighborMask(HexCellData cell)
+	bool HasReliefInNeighborhood(HexCellData cell)
 	{
-		int mask = 0;
+		if (cell.landform != HexLandform.Flat)
+		{
+			return true;
+		}
 		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 		{
 			if (Grid.TryGetCellIndex(cell.coordinates.Step(d), out int neighborIndex) &&
-				Grid.CellData[neighborIndex].landform == cell.landform)
+				Grid.CellData[neighborIndex].landform != HexLandform.Flat)
 			{
-				mask |= 1 << (int)d;
+				return true;
 			}
 		}
-		return mask;
-	}
-
-	float GetRidgeAngle(HexCellData cell, Vector3 cellPosition)
-	{
-		float xx = 0f, xz = 0f, zz = 0f;
-		int matchingNeighbors = 0;
-		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
-		{
-			if (!Grid.TryGetCellIndex(cell.coordinates.Step(d), out int neighborIndex) ||
-				Grid.CellData[neighborIndex].landform != cell.landform)
-			{
-				continue;
-			}
-			Vector3 direction = HexMetrics.GetSolidEdgeMiddle(d).normalized;
-			xx += direction.x * direction.x;
-			xz += direction.x * direction.z;
-			zz += direction.z * direction.z;
-			matchingNeighbors++;
-		}
-		if (matchingNeighbors == 0)
-		{
-			return HexMetrics.SampleHashGrid(cellPosition).a * Mathf.PI;
-		}
-		return 0.5f * Mathf.Atan2(2f * xz, xx - zz);
+		return false;
 	}
 
 	void Triangulate(

@@ -82,11 +82,6 @@ public static class HexMetrics
 	public const float cellPerturbStrength = 4f;
 
 	/// <summary>
-	/// Strength of vertical elevation perturbation.
-	/// </summary>
-	public const float elevationPerturbStrength = 1.5f;
-
-	/// <summary>
 	/// Offset for stream bed elevation.
 	/// </summary>
 	public const float streamBedElevationOffset = -1.75f;

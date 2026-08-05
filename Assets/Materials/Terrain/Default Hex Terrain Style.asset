@@ -21,6 +21,12 @@ MonoBehaviour:
   terrainSurfaceBlend: 0.74
   terrainSurfaceTiling: 0.018
   terrainMacroVariation: 0.075
+  hfTerrainMixer: {fileID: 2800000, guid: 48b6be89a0124ac49bfff8bd154a081a, type: 3}
+  hfRiverMixer: {fileID: 2800000, guid: 9d6226c50f864343ab825699de5842ab, type: 3}
+  hfStampScale: 1
+  hfTerrainBlend: 1
+  hfReliefFootprint: 0.68
+  hfRiverMixerStrength: 0.82
   rockAlbedo: {fileID: 2800000, guid: d60b6b2c8e154a88a789e47948756d38, type: 3}
   strataAlbedo: {fileID: 2800000, guid: aa90ef8b47f7443a9c407cb3ac3a209e, type: 3}
   rockNormal: {fileID: 2800000, guid: e193dd071f754d8b88121f65c2b54c99, type: 3}
@@ -34,8 +40,8 @@ MonoBehaviour:
   shoreFoam: {r: 0.84, g: 0.94, b: 0.9, a: 1}
   wetSand: {r: 0.45, g: 0.34, b: 0.2, a: 1}
   drySand: {r: 0.78, g: 0.63, b: 0.36, a: 1}
-  riverWater: {r: 0.055, g: 0.36, b: 0.42, a: 1}
-  riverBank: {r: 0.49, g: 0.39, b: 0.23, a: 1}
+  riverWater: {r: 0.035, g: 0.25, b: 0.29, a: 1}
+  riverBank: {r: 0.43, g: 0.32, b: 0.18, a: 1}
   waterStyleBlend: 0.84
   coastCliffLow: {r: 0.32, g: 0.24, b: 0.16, a: 1}
   coastCliffHigh: {r: 0.67, g: 0.58, b: 0.43, a: 1}

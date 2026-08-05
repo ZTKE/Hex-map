@@ -12,6 +12,18 @@ float4 _HexRiverWaterColor;
 float4 _HexRiverBankColor;
 float _HexWaterStyleBlend;
 
+TEXTURE2D(_HexHFRiverMixer);
+SAMPLER(sampler_HexHFRiverMixer);
+float _HexHFRiverMixerStrength;
+
+float HexHFRiverMask(float2 riverUV)
+{
+	float2 hfUV = float2(saturate(riverUV.x), frac(riverUV.y));
+	float mask = SAMPLE_TEXTURE2D(
+		_HexHFRiverMixer, sampler_HexHFRiverMixer, hfUV).r;
+	return lerp(1.0, mask, saturate(_HexHFRiverMixerStrength));
+}
+
 float3 HexStyledColor(float3 fallback, float3 styled)
 {
 	return lerp(fallback, styled, saturate(_HexWaterStyleBlend));
@@ -98,7 +110,11 @@ void GetFragmentDataEstuary_float(
 
 	float3 coast = HexShoreColor(
 		shore, foam, waves, WorldPosition.xz, Color.rgb);
-	float3 riverColor = HexStyledColor(Color.rgb, _HexRiverWaterColor.rgb);
+	float hfRiverMask = HexHFRiverMask(RiverUV);
+	float hfBank = 1.0 - smoothstep(0.12, 0.82, hfRiverMask);
+	float3 hfRiverColor = lerp(
+		_HexRiverWaterColor.rgb, _HexRiverBankColor.rgb, hfBank * 0.72);
+	float3 riverColor = HexStyledColor(Color.rgb, hfRiverColor);
 	float3 c = saturate(lerp(coast, riverColor + river * 0.16, ShoreUV.x));
 	BaseColor = c * Visibility.x;
 	Alpha = lerp(Color.a, lerp(0.7, 0.5, shore),
@@ -139,8 +155,11 @@ void GetFragmentDataRiver_float(
 {
 	float river = River(RiverUV, Time, NoiseTexture);
 	float edgeSilt = smoothstep(0.66, 0.98, abs(RiverUV.x * 2.0 - 1.0));
+	float hfRiverMask = HexHFRiverMask(RiverUV);
+	float hfBank = 1.0 - smoothstep(0.12, 0.82, hfRiverMask);
+	float bankBlend = max(edgeSilt * 0.34, hfBank * 0.72);
 	float3 styled = lerp(
-		_HexRiverWaterColor.rgb, _HexRiverBankColor.rgb, edgeSilt * 0.34);
+		_HexRiverWaterColor.rgb, _HexRiverBankColor.rgb, bankBlend);
 	float3 c = saturate(HexStyledColor(Color.rgb, styled) +
 		_HexShoreFoamColor.rgb * river * 0.12);
 	c = HexCivGrade(
@@ -148,6 +167,10 @@ void GetFragmentDataRiver_float(
 		0.66 + river * 0.16, 0.46);
 	BaseColor = c * Visibility.x;
 	Alpha = lerp(Color.a, 0.68, saturate(_HexWaterStyleBlend));
+	// Reveal the terrain beneath the dark sides of HF's meandering mask. This
+	// makes the water channel bend inside the strip instead of reading as a
+	// uniformly colored straight ribbon.
+	Alpha *= smoothstep(0.08, 0.72, hfRiverMask);
 	Exploration = Visibility.y;
 }
 

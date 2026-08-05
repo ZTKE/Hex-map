@@ -104,6 +104,16 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[Tooltip("Optional color decal exported from an editable terrain source.")]
 	public Texture2D mountainColorDecal;
 
+	[Header("HoneyFramework realtime mixer")]
+	[Tooltip("Eight-panel compact atlas derived from HF mixer masks. It changes ownership boundaries, not the current surface textures.")]
+	public Texture2D hfTerrainMixer;
+	[Tooltip("HF's meandering river ownership mask, used only by river and estuary materials.")]
+	public Texture2D hfRiverMixer;
+	[Min(0.4f)] public float hfStampScale = 1f;
+	[Range(0f, 1f)] public float hfTerrainBlend = 0.94f;
+	[Range(0f, 1f)] public float hfReliefFootprint = 0.68f;
+	[Range(0f, 1f)] public float hfRiverMixerStrength = 0.82f;
+
 	[Header("Material transitions")]
 	[Range(0f, 1f)] public float snowLowHeight = 0.75f;
 	[Range(0f, 1f)] public float snowHighHeight = 0.8125f;
@@ -116,8 +126,8 @@ public sealed class HexTerrainStyle : ScriptableObject
 	public Color shoreFoam = new(0.84f, 0.94f, 0.9f, 1f);
 	public Color wetSand = new(0.45f, 0.34f, 0.2f, 1f);
 	public Color drySand = new(0.78f, 0.63f, 0.36f, 1f);
-	public Color riverWater = new(0.055f, 0.36f, 0.42f, 1f);
-	public Color riverBank = new(0.49f, 0.39f, 0.23f, 1f);
+	public Color riverWater = new(0.035f, 0.25f, 0.29f, 1f);
+	public Color riverBank = new(0.43f, 0.32f, 0.18f, 1f);
 	[Range(0f, 1f)] public float waterStyleBlend = 0.84f;
 
 	[Header("Coast cliff material set")]
@@ -149,6 +159,7 @@ public sealed class HexTerrainStyle : ScriptableObject
 
 	[NonSerialized] readonly Dictionary<int, float[]> bakedMasks = new();
 	[NonSerialized] readonly HashSet<Texture2D> unreadableMasks = new();
+	[NonSerialized] Texture2DArray mountainMaskArray;
 
 	static HexTerrainStyle runtimeDefault;
 
@@ -244,6 +255,45 @@ public sealed class HexTerrainStyle : ScriptableObject
 		return Mathf.Clamp01(height01) * module.heightScale;
 	}
 
+	Texture2DArray GetMountainMaskArray()
+	{
+		EnsureMountainModules();
+		if (mountainMaskArray)
+		{
+			return mountainMaskArray;
+		}
+
+		int depth = Mathf.Max(1, mountainModules.Length);
+		mountainMaskArray = new Texture2DArray(
+			bakedMaskSize, bakedMaskSize, depth,
+			TextureFormat.RHalf, false, true)
+		{
+			name = $"{name} Mountain Height Masks",
+			filterMode = FilterMode.Bilinear,
+			wrapMode = TextureWrapMode.Clamp,
+			hideFlags = HideFlags.HideAndDontSave
+		};
+
+		Color[] pixels = new Color[bakedMaskSize * bakedMaskSize];
+		for (int moduleIndex = 0; moduleIndex < depth; moduleIndex++)
+		{
+			for (int y = 0; y < bakedMaskSize; y++)
+			{
+				for (int x = 0; x < bakedMaskSize; x++)
+				{
+					Vector2 point = new(
+						x / (float)(bakedMaskSize - 1) * 2f - 1f,
+						y / (float)(bakedMaskSize - 1) * 2f - 1f);
+					float height = SampleMountainHeight(moduleIndex, point);
+					pixels[y * bakedMaskSize + x] = new Color(height, 0f, 0f, 1f);
+				}
+			}
+			mountainMaskArray.SetPixels(pixels, moduleIndex, 0);
+		}
+		mountainMaskArray.Apply(false, true);
+		return mountainMaskArray;
+	}
+
 	public void ApplyTo(Material material)
 	{
 		ApplyGlobalMaterialSet();
@@ -273,6 +323,11 @@ public sealed class HexTerrainStyle : ScriptableObject
 			snowLowHeight, snowHighHeight, 0f, 0f));
 		material.SetVector("_HexDesertStripeCenters", desertStripeCenters);
 		material.SetVector("_HexDesertStripeWidths", desertStripeWidths);
+		material.SetVector("_HexReliefHeights", new Vector4(
+			hillHeight, mountainHeight, desertMountainHeight, 0f));
+		material.SetVector("_HexReliefWidths", new Vector4(
+			mountainWidth, desertMountainWidth, 0f, 0f));
+		material.SetTexture("_HexMountainMasks", GetMountainMaskArray());
 
 		EnsureBiomeStyles();
 		Vector4[] scree = new Vector4[biomeCount];
@@ -312,6 +367,22 @@ public sealed class HexTerrainStyle : ScriptableObject
 			"_HexTerrainAtlasBlend", terrainSurfaceAtlas ? terrainSurfaceBlend : 0f);
 		Shader.SetGlobalFloat("_HexTerrainAtlasTiling", terrainSurfaceTiling);
 		Shader.SetGlobalFloat("_HexTerrainMacroVariation", terrainMacroVariation);
+		if (hfTerrainMixer)
+		{
+			Shader.SetGlobalTexture("_HexHFTerrainMixer", hfTerrainMixer);
+		}
+		if (hfRiverMixer)
+		{
+			Shader.SetGlobalTexture("_HexHFRiverMixer", hfRiverMixer);
+		}
+		Shader.SetGlobalFloat("_HexHFStampScale", hfStampScale);
+		Shader.SetGlobalFloat(
+			"_HexHFBlendStrength", hfTerrainMixer ? hfTerrainBlend : 0f);
+		Shader.SetGlobalFloat(
+			"_HexHFReliefFootprint", hfTerrainMixer ? hfReliefFootprint : 0f);
+		Shader.SetGlobalFloat(
+			"_HexHFRiverMixerStrength",
+			hfRiverMixer ? hfRiverMixerStrength : 0f);
 		Shader.SetGlobalColor("_HexDeepOceanColor", deepOcean);
 		Shader.SetGlobalColor("_HexShallowWaterColor", shallowWater);
 		Shader.SetGlobalColor("_HexShoreFoamColor", shoreFoam);
@@ -415,6 +486,18 @@ public sealed class HexTerrainStyle : ScriptableObject
 	{
 		bakedMasks.Clear();
 		unreadableMasks.Clear();
+		if (mountainMaskArray)
+		{
+			if (Application.isPlaying)
+			{
+				Destroy(mountainMaskArray);
+			}
+			else
+			{
+				DestroyImmediate(mountainMaskArray);
+			}
+			mountainMaskArray = null;
+		}
 		EnsureBiomeStyles();
 		EnsureMountainModules();
 		EnsurePlantTints();
