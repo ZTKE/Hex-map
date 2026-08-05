@@ -85,6 +85,12 @@ public class HexCellShaderData : MonoBehaviour
 			RefreshTerrainShape(i);
 			RefreshVisibility(i);
 		}
+		HexGridChunk[] chunks =
+			Grid.GetComponentsInChildren<HexGridChunk>(true);
+		for (int i = 0; i < chunks.Length; i++)
+		{
+			chunks[i].Refresh();
+		}
 		enabled = true;
 	}
 
