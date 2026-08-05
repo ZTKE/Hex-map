@@ -11,11 +11,12 @@ Shader "Hex Map/HF Foreground"
 		Tags
 		{
 			"RenderPipeline" = "UniversalPipeline"
-			"RenderType" = "TransparentCutout"
-			"Queue" = "AlphaTest+20"
+			"RenderType" = "Transparent"
+			"Queue" = "Transparent"
 		}
 		Cull Off
-		ZWrite On
+		ZWrite Off
+		Blend SrcAlpha OneMinusSrcAlpha
 
 		Pass
 		{
@@ -62,6 +63,7 @@ Shader "Hex Map/HF Foreground"
 				float2 uv : TEXCOORD0;
 				float4 color : COLOR;
 				float fogFactor : TEXCOORD1;
+				half heightGate : TEXCOORD2;
 			};
 
 			Varyings Vert(Attributes input)
@@ -86,6 +88,16 @@ Shader "Hex Map/HF Foreground"
 				output.positionCS = TransformWorldToHClip(positionWS);
 				output.uv = TRANSFORM_TEX(input.uv, _MainTex);
 				output.color = input.color;
+				// Exact HF foreground eligibility: sprites are kept only on the
+				// middle height band of the final baked terrain.
+				output.heightGate =
+					relief.bakedHeight > 0.495 && relief.bakedHeight < 0.75 ? 1.0h : 0.0h;
+				float bakedLight = HF_EvaluateOriginalBakedLight(
+					input.cellIndices.x, input.localPosition, relief.bakedHeight);
+				float ovenLight = (bakedLight - 1.1) / 1.3 + 0.5;
+				float foregroundLight = clamp(
+					(ovenLight - 0.5) * 5.0 + 1.0, 0.6, 1.5);
+				output.color.rgb *= foregroundLight;
 				output.fogFactor = ComputeFogFactor(output.positionCS.z);
 				return output;
 			}
@@ -94,10 +106,10 @@ Shader "Hex Map/HF Foreground"
 			{
 				half4 atlas = SAMPLE_TEXTURE2D(
 					_MainTex, sampler_MainTex, input.uv);
-				clip(atlas.a - _Cutoff);
+				clip(input.heightGate - 0.5h);
 				half3 color = atlas.rgb * input.color.rgb;
 				color = MixFog(color, input.fogFactor);
-				return half4(color, 1.0h);
+				return half4(color, atlas.a * input.color.a);
 			}
 			ENDHLSL
 		}

@@ -116,7 +116,8 @@ Shader "Hex Map/Relief"
 				float4 style : TEXCOORD4;
 				float4 localData : TEXCOORD5;
 				half fogFactor : TEXCOORD6;
-				half3 hfDiffuse : TEXCOORD7;
+				float2 localPosition : TEXCOORD7;
+				half hfBakedLight : TEXCOORD8;
 			};
 
 			TessControlPoint Vert(Attributes input)
@@ -208,7 +209,10 @@ Shader "Hex Map/Relief"
 				output.localData = float4(
 					surface.moduleUV, surface.moduleIndex, 0.0);
 				output.fogFactor = ComputeFogFactor(positionInputs.positionCS.z);
-				output.hfDiffuse = surface.diffuse;
+				output.localPosition = localPosition;
+				output.hfBakedLight = _HexHFOriginalBlend > 0.999 ?
+					HF_EvaluateOriginalBakedLight(
+						cellIndices.x, localPosition, surface.bakedHeight) : 1.0;
 				return output;
 			}
 
@@ -428,6 +432,35 @@ Shader "Hex Map/Relief"
 					reliefPresence, input.relief.w, originalBlend);
 				clip(edgeFade - 0.025);
 
+				// HF's final diffuse was baked per pixel and already contained the
+				// Oven height-offset light/shadow pass. Keep this as a separate path:
+				// none of the newer rock, facet, posterization, or biome recolouring
+				// belongs to HoneyFramework's final terrain material.
+				if (originalBlend > 0.999)
+				{
+					half3 color = HF_EvaluateOriginalDiffuse(
+						input.cellIndices.x, input.localPosition);
+					color *= max(input.hfBakedLight, 0.0h);
+
+					bool editMode = false;
+					#ifdef _HEX_MAP_EDIT_MODE
+						editMode = true;
+					#endif
+					float4 cellData = GetCellData(
+						input.cellIndices, 0, editMode);
+					color *= lerp(0.25, 1.0, cellData.r);
+
+					float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
+					Light mainLight = GetMainLight(shadowCoord);
+					half rawDiffuse = saturate(dot(vertexNormal, mainLight.direction));
+					half diffuse = 0.3h + 0.7h * rawDiffuse;
+					half3 lighting = SampleSH(vertexNormal) +
+						mainLight.color * diffuse * mainLight.shadowAttenuation;
+					color *= min(lighting, 1.2h);
+					color = MixFog(color, input.fogFactor);
+					return half4(color, 1.0h);
+				}
+
 				half3 faceNormal = normalize(cross(
 					ddy(input.positionWS), ddx(input.positionWS)));
 				faceNormal *= dot(faceNormal, vertexNormal) < 0.0 ? -1.0 : 1.0;
@@ -439,8 +472,11 @@ Shader "Hex Map/Relief"
 
 				half3 legacyGround = SampleHFMixedReliefGround(
 					input.positionWS, terrainIndex);
+				half3 originalGround = originalBlend > 0.001 ?
+					HF_EvaluateOriginalDiffuse(
+						input.cellIndices.x, input.localPosition) : legacyGround;
 				half3 ground = lerp(
-					legacyGround, input.hfDiffuse, originalBlend);
+					legacyGround, originalGround, originalBlend);
 				float legacyArt = 1.0 - originalBlend;
 				float macroNoise = Fbm(
 					input.positionWS.xz * 0.055 + input.style.xy * 19.0);

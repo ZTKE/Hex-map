@@ -100,15 +100,26 @@ public sealed class HexHFForegroundMesh : MonoBehaviour
 
 		if (cell.PlantLevel > 0)
 		{
-			float density = Mathf.Clamp01(cell.PlantLevel / 3f);
-			Color tint = cell.PlantLevel == 2 ?
-				HexColor(0x3d, 0x5c, 0x3e) : HexColor(0x71, 0x79, 0x2f);
-			AddGroup(SpriteKind.Tree14, Mathf.RoundToInt(15 * density),
-				tint, cellIndex, center, ref randomState);
-			AddGroup(SpriteKind.Tree04, Mathf.RoundToInt(30 * density),
-				tint, cellIndex, center, ref randomState);
-			AddGroup(SpriteKind.Tree07, Mathf.RoundToInt(40 * density),
-				tint, cellIndex, center, ref randomState);
+			if (cell.TerrainTypeIndex == 3)
+			{
+				// HF terrain OID 9: the cold mixed living/dead forest set.
+				Color tint = HexColor(0x3d, 0x5c, 0x3e);
+				AddGroup(SpriteKind.Tree07, 25,
+					tint, cellIndex, center, ref randomState);
+				AddGroup(SpriteKind.DeadTree02, 30,
+					tint, cellIndex, center, ref randomState);
+			}
+			else
+			{
+				// HF terrain OID 5: the original full plains forest definition.
+				Color tint = HexColor(0x71, 0x79, 0x2f);
+				AddGroup(SpriteKind.Tree14, 15,
+					tint, cellIndex, center, ref randomState);
+				AddGroup(SpriteKind.Tree04, 30,
+					tint, cellIndex, center, ref randomState);
+				AddGroup(SpriteKind.Tree07, 40,
+					tint, cellIndex, center, ref randomState);
+			}
 			return;
 		}
 
@@ -126,6 +137,7 @@ public sealed class HexHFForegroundMesh : MonoBehaviour
 	public void Apply()
 	{
 		bool hasGeometry = centers.Count > 0;
+		BuildSortedTriangles();
 		mesh.SetVertices(centers);
 		mesh.SetUVs(0, atlasUVs);
 		mesh.SetUVs(1, billboardOffsets);
@@ -145,6 +157,32 @@ public sealed class HexHFForegroundMesh : MonoBehaviour
 		// Mesh owns the uploaded data now. Returning the construction lists keeps
 		// dense HF forests from retaining a second CPU copy in every chunk.
 		ReleaseLists();
+	}
+
+	void BuildSortedTriangles()
+	{
+		triangles.Clear();
+		int spriteCount = centers.Count / 4;
+		List<int> order = ListPool<int>.Get();
+		for (int i = 0; i < spriteCount; i++)
+		{
+			order.Add(i);
+		}
+		// HF sorts foreground back-to-front by Z before emitting one transparent
+		// mesh. Triangle order therefore remains meaningful even inside one batch.
+		order.Sort((a, b) =>
+			centers[b * 4].z.CompareTo(centers[a * 4].z));
+		for (int i = 0; i < order.Count; i++)
+		{
+			int firstVertex = order[i] * 4;
+			triangles.Add(firstVertex + 2);
+			triangles.Add(firstVertex + 1);
+			triangles.Add(firstVertex);
+			triangles.Add(firstVertex);
+			triangles.Add(firstVertex + 3);
+			triangles.Add(firstVertex + 2);
+		}
+		ListPool<int>.Add(order);
 	}
 
 	void OnDestroy() => ReleaseLists();
@@ -202,12 +240,12 @@ public sealed class HexHFForegroundMesh : MonoBehaviour
 		AtlasEntry entry = GetEntry(kind);
 		float width = entry.pixels.x * scale;
 		float height = entry.pixels.y * scale;
-		float left = -(1f - entry.pivot.x) * width;
-		float right = entry.pivot.x * width;
+		// HF flips the atlas pivot on X before constructing each quad.
+		float left = -entry.pivot.x * width;
+		float right = (1f - entry.pivot.x) * width;
 		float bottom = -(1f - entry.pivot.y) * height;
 		float top = entry.pivot.y * height;
 
-		int firstVertex = centers.Count;
 		AddVertex(center, new Vector2(entry.uv.xMin, entry.uv.yMax),
 			new Vector2(left, top), localPosition, cellIndex, tint);
 		AddVertex(center, new Vector2(entry.uv.xMin, entry.uv.yMin),
@@ -217,12 +255,6 @@ public sealed class HexHFForegroundMesh : MonoBehaviour
 		AddVertex(center, new Vector2(entry.uv.xMax, entry.uv.yMax),
 			new Vector2(right, top), localPosition, cellIndex, tint);
 
-		triangles.Add(firstVertex + 2);
-		triangles.Add(firstVertex + 1);
-		triangles.Add(firstVertex);
-		triangles.Add(firstVertex);
-		triangles.Add(firstVertex + 3);
-		triangles.Add(firstVertex + 2);
 	}
 
 	void AddVertex(

@@ -15,10 +15,18 @@ art, which is sampled only by the GPU.
   height, and mixer stamps.
 - Stamps overlap at HF's original 1.6-radius scale. The maximum mixer plus
   missing-strength rule removes hard hex borders.
+- Height samples use the mip footprint equivalent to HF Oven's downsample and
+  Gaussian pass. The two original offset-height samples and shadow strength 12
+  reproduce `3ShadowsAndHeightShader` / `4DiffuseShader` lighting.
+- Diffuse stamps are reconstructed per fragment, matching the resolution of
+  HF's baked diffuse instead of interpolating colour across tessellation
+  triangles.
 - Terrain shape is reconstructed from map-wide logical cell textures. No
   per-cell or per-chunk height/diffuse render textures are allocated.
 - HF foreground sprites are combined into one billboard mesh per chunk and
-  read the same logical height in the vertex shader.
+  read the same logical height in the vertex shader. Their original 0.495-0.75
+  height eligibility, transparent blending, vertex tint gradient, atlas pivot,
+  and back-to-front Z ordering are retained.
 - Ocean rendering remains the project's existing implementation by design.
 
 The pre-HF material textures remain available under `Assets/Materials/Terrain`

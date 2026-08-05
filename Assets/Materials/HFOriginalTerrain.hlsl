@@ -32,6 +32,9 @@ TEXTURE2D(_HFRiverMixer);
 float _HexHFOriginalBlend;
 float _HexHFOriginalStampScale;
 float _HexHFOriginalHeightScale;
+float _HexHFOriginalHeightLod;
+float _HexHFOriginalShadowStrength;
+float4 _HexHFOriginalShadowOffsets;
 
 #define HF_ORIGINAL_DIRT 0.0
 #define HF_ORIGINAL_PLAINS 1.0
@@ -48,6 +51,19 @@ float HFOriginalPanelFor(float terrain, float landform)
 	if (terrain < 2.5) return HF_ORIGINAL_MARSH;
 	if (terrain < 3.5) return HF_ORIGINAL_DIRT;
 	return HF_ORIGINAL_PLAINS;
+}
+
+float HFOriginalPanelForCell(
+	float terrain, float landform, float plantLevel)
+{
+	// HF's forest terrain definitions (OID 5 and OID 9) both use the
+	// Plains1 triplet; foreground density is a terrain-definition choice, not a
+	// recolour layered over Dirt or Marsh.
+	if (landform < 0.5 && plantLevel > 0.5)
+	{
+		return HF_ORIGINAL_PLAINS;
+	}
+	return HFOriginalPanelFor(terrain, landform);
 }
 
 float2 HFOriginalRotate(float2 p, float angle)
@@ -99,16 +115,20 @@ float HFOriginalSampleHeight(float panel, float2 uv)
 	float sampleValue = 0.0;
 	if (panel < 0.5)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
-			_HFDirtHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).r;
+			_HFDirtHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV,
+			_HexHFOriginalHeightLod).r;
 	else if (panel < 2.5)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
-			_HFCommonHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).r;
+			_HFCommonHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV,
+			_HexHFOriginalHeightLod).r;
 	else if (panel < 3.5)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
-			_HFHillHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).r;
+			_HFHillHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV,
+			_HexHFOriginalHeightLod).r;
 	else
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
-			_HFMountainHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).r;
+			_HFMountainHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV,
+			_HexHFOriginalHeightLod).r;
 	return sampleValue;
 }
 

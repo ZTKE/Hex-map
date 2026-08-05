@@ -28,6 +28,66 @@ public class HexCellShaderData : MonoBehaviour
 
 	public bool ImmediateMode { get; set; }
 
+	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+	static void RebindLoadedLogicalTextures()
+	{
+		HexCellShaderData[] instances =
+			Resources.FindObjectsOfTypeAll<HexCellShaderData>();
+		for (int i = 0; i < instances.Length; i++)
+		{
+			if (instances[i] && instances[i].gameObject.scene.IsValid())
+			{
+				instances[i].RebindAfterReload();
+			}
+		}
+	}
+
+	void RebindAfterReload()
+	{
+		if (Grid == null)
+		{
+			Grid = GetComponent<HexGrid>();
+		}
+		if (Grid == null || Grid.CellData == null || Grid.CellData.Length == 0)
+		{
+			return;
+		}
+
+		int cellCount = Grid.CellData.Length;
+		if (!cellTexture || !terrainShapeTexture ||
+			cellTextureData == null || terrainShapeTextureData == null ||
+			visibilityTransitions == null ||
+			cellTextureData.Length != cellCount ||
+			terrainShapeTextureData.Length != cellCount ||
+			visibilityTransitions.Length != cellCount)
+		{
+			Initialize(Grid.CellCountX, Grid.CellCountZ);
+		}
+		else
+		{
+			Shader.SetGlobalTexture("_HexCellData", cellTexture);
+			Shader.SetGlobalTexture(
+				"_HexTerrainShapeData", terrainShapeTexture);
+			Shader.SetGlobalVector(
+				"_HexCellData_TexelSize",
+				new Vector4(
+					1f / Grid.CellCountX, 1f / Grid.CellCountZ,
+					Grid.CellCountX, Grid.CellCountZ));
+			Shader.SetGlobalFloat(
+				"_HexTerrainShapeWrap", Grid.Wrapping ? 1f : 0f);
+		}
+
+		// Repack every texel as the logical layout can change between script
+		// versions (currently the spare neighbor-mask bits carry HF forest type).
+		for (int i = 0; i < cellCount; i++)
+		{
+			RefreshTerrain(i);
+			RefreshTerrainShape(i);
+			RefreshVisibility(i);
+		}
+		enabled = true;
+	}
+
 	/// <summary>
 	/// Initialze the map data.
 	/// </summary>
@@ -128,8 +188,6 @@ public class HexCellShaderData : MonoBehaviour
 
 		HexCellData cell = Grid.CellData[cellIndex];
 		int neighborMask = 0;
-		float xx = 0f, xz = 0f, zz = 0f;
-		int matchingNeighbors = 0;
 		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 		{
 			if (!Grid.TryGetCellIndex(
@@ -140,17 +198,14 @@ public class HexCellShaderData : MonoBehaviour
 				continue;
 			}
 			neighborMask |= 1 << (int)d;
-			Vector3 direction = HexMetrics.GetSolidEdgeMiddle(d).normalized;
-			xx += direction.x * direction.x;
-			xz += direction.x * direction.z;
-			zz += direction.z * direction.z;
-			matchingNeighbors++;
 		}
 
-		float ridgeAngle = matchingNeighbors == 0 ?
+		// HF rotates every complete terrain stamp independently. Connected
+		// mountains merge through their mixer/height overlap; aligning stamps to a
+		// procedural ridge axis is a newer topology rule and changes HF's artwork.
+		float ridgeAngle =
 			(HexMetrics.SampleHashGrid(Grid.CellPositions[cellIndex]).a - 0.5f) *
-				Mathf.PI * 2f :
-			0.5f * Mathf.Atan2(2f * xz, xx - zz);
+			Mathf.PI * 2f;
 		float angle01 = Mathf.Repeat(
 			ridgeAngle / (Mathf.PI * 2f) + 0.5f, 1f);
 		int packedLandformAndAngle =
@@ -167,9 +222,11 @@ public class HexCellShaderData : MonoBehaviour
 		}
 
 		float surfaceY = Mathf.Clamp(Grid.CellPositions[cellIndex].y, 0f, 30f);
+		int packedNeighborsAndPlants = neighborMask |
+			(Mathf.Clamp(cell.PlantLevel, 0, 3) << 6);
 		terrainShapeTextureData[cellIndex] = new Color32(
 			(byte)packedLandformAndAngle,
-			(byte)neighborMask,
+			(byte)packedNeighborsAndPlants,
 			(byte)riverMask,
 			(byte)Mathf.RoundToInt(surfaceY * (255f / 30f)));
 		terrainShapeDirty = true;

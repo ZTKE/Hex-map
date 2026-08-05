@@ -119,6 +119,13 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[Range(0f, 1f)] public float hfOriginalTerrainBlend = 1f;
 	[Min(0.4f)] public float hfOriginalStampScale = 1.6f;
 	[Min(0.1f)] public float hfOriginalHeightScale = 16f;
+	[Tooltip("Mip level matching HF Oven's downsample plus Gaussian height blur.")]
+	[Range(0f, 4f)] public float hfOriginalHeightLod = 2f;
+	[Tooltip("Exact strength from HF's 3ShadowsAndHeight material.")]
+	[Range(0f, 24f)] public float hfOriginalShadowStrength = 12f;
+	[Tooltip("HF Oven's two camera offsets in normalized hex-radius space.")]
+	public Vector4 hfOriginalShadowOffsets = new(
+		0.14552f, -0.03638f, 0.29104f, -0.07276f);
 	public Texture2D hfDirtDiffuse;
 	public Texture2D hfDirtHeight;
 	public Texture2D hfDirtMixer;
@@ -185,6 +192,23 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[NonSerialized] Texture2DArray mountainMaskArray;
 
 	static HexTerrainStyle runtimeDefault;
+
+	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+	static void ReapplyLoadedHFGlobals()
+	{
+		// Shader globals are cleared by a scripting-domain reload even when Enter
+		// Play Mode keeps the scene alive, so chunk Awake methods are not guaranteed
+		// to run again. Reapply the loaded style independently of scene lifecycle.
+		HexTerrainStyle[] styles = Resources.FindObjectsOfTypeAll<HexTerrainStyle>();
+		for (int i = 0; i < styles.Length; i++)
+		{
+			if (styles[i] && styles[i].HasHFOriginalTerrainSet())
+			{
+				styles[i].ApplyGlobalMaterialSet();
+				return;
+			}
+		}
+	}
 
 	public static HexTerrainStyle RuntimeDefault
 	{
@@ -419,6 +443,11 @@ public sealed class HexTerrainStyle : ScriptableObject
 			HasHFOriginalTerrainSet() ? hfOriginalTerrainBlend : 0f);
 		Shader.SetGlobalFloat("_HexHFOriginalStampScale", hfOriginalStampScale);
 		Shader.SetGlobalFloat("_HexHFOriginalHeightScale", hfOriginalHeightScale);
+		Shader.SetGlobalFloat("_HexHFOriginalHeightLod", hfOriginalHeightLod);
+		Shader.SetGlobalFloat(
+			"_HexHFOriginalShadowStrength", hfOriginalShadowStrength);
+		Shader.SetGlobalVector(
+			"_HexHFOriginalShadowOffsets", hfOriginalShadowOffsets);
 		Shader.SetGlobalFloat("_HexHFStampScale", hfStampScale);
 		Shader.SetGlobalFloat(
 			"_HexHFBlendStrength", hfTerrainMixer ? hfTerrainBlend : 0f);
@@ -560,6 +589,7 @@ public sealed class HexTerrainStyle : ScriptableObject
 		EnsureBiomeStyles();
 		EnsureMountainModules();
 		EnsurePlantTints();
+		ApplyGlobalMaterialSet();
 	}
 
 	void EnsureBiomeStyles()

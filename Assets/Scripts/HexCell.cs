@@ -117,7 +117,7 @@ public struct HexCell
 	/// <param name="plantLevel">Plant level.</param>
 	public readonly void SetPlantLevel(int plantLevel)
 	{
-		if (Values.UrbanLevel != plantLevel)
+		if (Values.PlantLevel != plantLevel)
 		{
 			Values = Values.WithPlantLevel(plantLevel);
 			Refresh();
@@ -165,6 +165,9 @@ public struct HexCell
 		{
 			Values = Values.WithTerrainTypeIndex(terrainTypeIndex);
 			grid.ShaderData.RefreshTerrain(index);
+			// HF foreground definitions are part of the terrain type, so the chunk
+			// batch must be rebuilt together with the logical material byte.
+			grid.RefreshCell(index);
 		}
 	}
 

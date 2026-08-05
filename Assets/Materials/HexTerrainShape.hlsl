@@ -28,6 +28,7 @@ struct HFCellShape
 	float angle;
 	float baseY;
 	float terrain;
+	float plantLevel;
 	uint neighborMask;
 	uint riverMask;
 	float4 hash;
@@ -39,6 +40,9 @@ struct HFReliefSurface
 	float y;
 	float height;
 	float height01;
+	// HF's baked Alpha8 height before displacement. Foreground placement and
+	// the Oven light/shadow pass use this exact 0..1 value.
+	float bakedHeight;
 	float landform;
 	float terrain;
 	float coverage;
@@ -132,6 +136,7 @@ HFCellShape HFLoadCell(float2 requestedOffset)
 	cell.angle = 0.0;
 	cell.baseY = 0.0;
 	cell.terrain = 0.0;
+	cell.plantLevel = 0.0;
 	cell.neighborMask = 0u;
 	cell.riverMask = 0u;
 	cell.hash = 0.0;
@@ -145,7 +150,9 @@ HFCellShape HFLoadCell(float2 requestedOffset)
 	cell.landform = (float)(packed >> 6u);
 	float angle01 = (float)(packed & 63u) / 63.0;
 	cell.angle = angle01 * (2.0 * HF_PI) - HF_PI;
-	cell.neighborMask = (uint)round(encoded.g * 255.0);
+	uint packedNeighborsAndPlants = (uint)round(encoded.g * 255.0);
+	cell.neighborMask = packedNeighborsAndPlants & 63u;
+	cell.plantLevel = (float)(packedNeighborsAndPlants >> 6u);
 	cell.riverMask = (uint)round(encoded.b * 255.0);
 	cell.baseY = encoded.a * 30.0;
 	float4 mapData = GetCellData(offset, false);
@@ -436,8 +443,6 @@ struct HFOriginalReliefAccumulator
 	float fillWeight;
 	float mixerHeight;
 	float fillHeight;
-	float3 mixerDiffuse;
-	float3 fillDiffuse;
 	float weightedBaseY;
 	float baseWeight;
 	float strongestScore;
@@ -469,18 +474,16 @@ void HFAccumulateOriginalRelief(
 		return;
 	}
 
-	float panel = HFOriginalPanelFor(cell.terrain, cell.landform);
+	float panel = HFOriginalPanelForCell(
+		cell.terrain, cell.landform, cell.plantLevel);
 	float mixer = HFOriginalSampleMixer(panel, uv) * centralization;
 	float heightSample = HFOriginalSampleHeight(panel, uv);
-	float3 diffuseSample = HFOriginalSampleDiffuse(panel, uv);
 
 	accumulator.globalMaximum = max(accumulator.globalMaximum, mixer);
 	accumulator.mixerWeight += mixer;
 	accumulator.fillWeight += centralization;
 	accumulator.mixerHeight += heightSample * mixer;
 	accumulator.fillHeight += heightSample * centralization;
-	accumulator.mixerDiffuse += diffuseSample * mixer;
-	accumulator.fillDiffuse += diffuseSample * centralization;
 	accumulator.weightedBaseY += cell.baseY * centralization;
 	accumulator.baseWeight += centralization;
 	accumulator.riverDistance = min(
@@ -506,6 +509,7 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	result.y = 0.0;
 	result.height = 0.0;
 	result.height01 = 0.0;
+	result.bakedHeight = 0.5;
 	result.landform = 0.0;
 	result.terrain = 0.0;
 	result.coverage = 0.0;
@@ -530,8 +534,6 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	accumulator.fillWeight = 0.0;
 	accumulator.mixerHeight = 0.0;
 	accumulator.fillHeight = 0.0;
-	accumulator.mixerDiffuse = 0.0;
-	accumulator.fillDiffuse = 0.0;
 	accumulator.weightedBaseY = 0.0;
 	accumulator.baseWeight = 0.0;
 	accumulator.strongestScore = -1.0;
@@ -539,8 +541,8 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	accumulator.terrain = rootCell.terrain;
 	accumulator.style = rootCell.hash;
 	accumulator.strongestUV = 0.5;
-	accumulator.strongestPanel = HFOriginalPanelFor(
-		rootCell.terrain, rootCell.landform);
+	accumulator.strongestPanel = HFOriginalPanelForCell(
+		rootCell.terrain, rootCell.landform, rootCell.plantLevel);
 	accumulator.riverDistance = 1000.0;
 
 	HFAccumulateOriginalRelief(
@@ -576,8 +578,10 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	float inverseWeight = 1.0 / totalWeight;
 	float heightSample = (accumulator.mixerHeight +
 		accumulator.fillHeight * missingStrength) * inverseWeight;
-	result.diffuse = (accumulator.mixerDiffuse +
-		accumulator.fillDiffuse * missingStrength) * inverseWeight;
+	// Diffuse is reconstructed per fragment by HF_EvaluateOriginalDiffuse.
+	// Sampling it here would reduce HF's full-resolution colour to one sample per
+	// tessellated vertex and would also repeat the work for the shadow offsets.
+	result.diffuse = 0.0;
 
 	float baseY = accumulator.baseWeight > 0.0001 ?
 		accumulator.weightedBaseY / accumulator.baseWeight : rootCell.baseY;
@@ -599,6 +603,7 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	result.height = displacement;
 	result.height01 = saturate(
 		displacement / max(_HexHFOriginalHeightScale * 0.5, 0.001));
+	result.bakedHeight = heightSample;
 	result.landform = accumulator.landform;
 	result.terrain = accumulator.terrain;
 	result.coverage = 1.0;
@@ -615,6 +620,7 @@ HFReliefSurface HF_EvaluateLegacyRelief(float cellIndex, float2 localPosition)
 	result.y = 0.0;
 	result.height = 0.0;
 	result.height01 = 0.0;
+	result.bakedHeight = 0.5;
 	result.landform = 0.0;
 	result.terrain = 0.0;
 	result.coverage = 0.0;
@@ -712,6 +718,8 @@ HFReliefSurface HF_EvaluateLegacyRelief(float cellIndex, float2 localPosition)
 		_HexReliefHeights.x :
 		(result.terrain < 0.5 ? _HexReliefHeights.z : _HexReliefHeights.y);
 	result.height01 = saturate(result.height / max(maximum, 0.001));
+	result.bakedHeight = saturate(
+		0.5 + result.height / max(_HexHFOriginalHeightScale, 0.001));
 	result.y = baseY + result.height + 0.018;
 	return result;
 }
@@ -735,6 +743,8 @@ HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
 	legacy.height = lerp(legacy.height, original.height, originalBlend);
 	legacy.height01 = lerp(
 		legacy.height01, original.height01, originalBlend);
+	legacy.bakedHeight = lerp(
+		legacy.bakedHeight, original.bakedHeight, originalBlend);
 	legacy.coverage = lerp(legacy.coverage, original.coverage, originalBlend);
 	legacy.diffuse = original.diffuse;
 	if (originalBlend > 0.5)
@@ -746,6 +756,119 @@ HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
 		legacy.moduleIndex = original.moduleIndex;
 	}
 	return legacy;
+}
+
+struct HFOriginalDiffuseAccumulator
+{
+	float globalMaximum;
+	float mixerWeight;
+	float fillWeight;
+	float3 mixerDiffuse;
+	float3 fillDiffuse;
+};
+
+void HFAccumulateOriginalDiffuse(
+	inout HFOriginalDiffuseAccumulator accumulator,
+	float2 requestedOffset,
+	float2 samplePoint)
+{
+	HFCellShape cell = HFLoadCell(requestedOffset);
+	if (cell.valid < 0.5)
+	{
+		return;
+	}
+
+	float2 uv = HFOriginalUV(samplePoint, cell.angle);
+	float centralization = HFOriginalCentralization(uv);
+	if (centralization <= 0.0001)
+	{
+		return;
+	}
+
+	float panel = HFOriginalPanelForCell(
+		cell.terrain, cell.landform, cell.plantLevel);
+	float mixer = HFOriginalSampleMixer(panel, uv) * centralization;
+	float3 diffuseSample = HFOriginalSampleDiffuse(panel, uv);
+	accumulator.globalMaximum = max(accumulator.globalMaximum, mixer);
+	accumulator.mixerWeight += mixer;
+	accumulator.fillWeight += centralization;
+	accumulator.mixerDiffuse += diffuseSample * mixer;
+	accumulator.fillDiffuse += diffuseSample * centralization;
+}
+
+// Reconstruct diffuse in the fragment stage. HF baked its colour at full
+// texture resolution; interpolating one colour per tessellated vertex exposes
+// every micro-triangle as a large triangular colour patch.
+float3 HF_EvaluateOriginalDiffuse(float cellIndex, float2 localPosition)
+{
+	float width = _HexCellData_TexelSize.z;
+	float2 rootOffset = float2(
+		fmod(floor(cellIndex + 0.5), width),
+		floor((cellIndex + 0.5) / width));
+	HFCellShape rootCell = HFLoadCell(rootOffset);
+	if (rootCell.valid < 0.5)
+	{
+		return 0.0;
+	}
+
+	HFOriginalDiffuseAccumulator accumulator;
+	accumulator.globalMaximum = 0.0;
+	accumulator.mixerWeight = 0.0;
+	accumulator.fillWeight = 0.0;
+	accumulator.mixerDiffuse = 0.0;
+	accumulator.fillDiffuse = 0.0;
+
+	HFAccumulateOriginalDiffuse(
+		accumulator, rootOffset, localPosition);
+	[unroll]
+	for (int direction = 0; direction < 6; direction++)
+	{
+		float2 firstOffset = HFNeighborOffset(rootOffset, direction);
+		float2 firstCenter = HFNeighborCenter(direction);
+		HFAccumulateOriginalDiffuse(
+			accumulator, firstOffset, localPosition - firstCenter);
+
+		int nextDirection = (direction + 1) % 6;
+		float2 cornerOffset = HFNeighborOffset(
+			firstOffset, nextDirection);
+		float2 cornerCenter = firstCenter + HFNeighborCenter(nextDirection);
+		HFAccumulateOriginalDiffuse(
+			accumulator, cornerOffset, localPosition - cornerCenter);
+	}
+
+	float missingStrength = 1.0 - saturate(accumulator.globalMaximum);
+	float totalWeight = accumulator.mixerWeight +
+		accumulator.fillWeight * missingStrength;
+	return totalWeight > 0.0001 ?
+		(accumulator.mixerDiffuse +
+			accumulator.fillDiffuse * missingStrength) / totalWeight :
+		HFOriginalSampleDiffuse(
+			HFOriginalPanelForCell(
+				rootCell.terrain, rootCell.landform, rootCell.plantLevel),
+			HFOriginalUV(localPosition, rootCell.angle));
+}
+
+float HF_EvaluateOriginalBakedLight(
+	float cellIndex, float2 localPosition, float centerBakedHeight)
+{
+	HFReliefSurface offset1 = HF_EvaluateOriginalRelief(
+		cellIndex, localPosition + _HexHFOriginalShadowOffsets.xy);
+	HFReliefSurface offset2 = HF_EvaluateOriginalRelief(
+		cellIndex, localPosition + _HexHFOriginalShadowOffsets.zw);
+
+	float baseHeight = centerBakedHeight;
+	float helperHeight1 = offset1.bakedHeight;
+	float helperHeight2 = offset2.bakedHeight;
+	float strength = _HexHFOriginalShadowStrength;
+	float light1 = saturate(baseHeight - helperHeight1) * strength * 0.5;
+	float shadow1 = saturate(helperHeight1 - baseHeight) * strength;
+	light1 *= saturate(baseHeight - 0.5) * 3.0;
+	float light2 = saturate(baseHeight - helperHeight2) * strength * 0.5;
+	float shadow2 = saturate(helperHeight2 - baseHeight) * strength;
+	light2 *= saturate(baseHeight - 0.5) * 3.0;
+	float ovenLight = max(light1, light2) -
+		(shadow1 + shadow2) * 0.5 + 0.5;
+	return ((ovenLight - 0.5) * 1.3) + 1.1;
 }
 
 #endif

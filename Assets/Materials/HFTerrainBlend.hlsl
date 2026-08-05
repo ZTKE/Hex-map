@@ -29,6 +29,7 @@ struct HFTerrainMixStamp
 	float2 localUV;
 	float terrain;
 	float landform;
+	float plantLevel;
 	float angle;
 	float underwater;
 	float mixer;
@@ -161,6 +162,7 @@ HFTerrainMixStamp HFMixLoadStamp(
 	stamp.localUV = 0.5;
 	stamp.terrain = 0.0;
 	stamp.landform = 0.0;
+	stamp.plantLevel = 0.0;
 	stamp.angle = 0.0;
 	stamp.underwater = 0.0;
 	stamp.mixer = 0.0;
@@ -181,6 +183,8 @@ HFTerrainMixStamp HFMixLoadStamp(
 	stamp.landform = floor(packed / 64.0);
 	float angle01 = fmod(packed, 64.0) / 63.0;
 	stamp.angle = angle01 * (2.0 * HF_MIXER_PI) - HF_MIXER_PI;
+	float packedNeighborsAndPlants = floor(encoded.g * 255.0 + 0.5);
+	stamp.plantLevel = floor(packedNeighborsAndPlants / 64.0);
 
 	float4 mapData = GetCellData(resolved, false);
 	stamp.terrain = floor(mapData.a * 255.0 + 0.5);
@@ -209,7 +213,8 @@ HFTerrainMixStamp HFMixLoadStamp(
 		localFromCandidateCenter / HF_MIXER_SQRT3_OVER_2 * 1.5,
 		stamp.angle);
 	float originalCentralization = HFOriginalCentralization(originalUV);
-	float originalPanel = HFOriginalPanelFor(stamp.terrain, stamp.landform);
+	float originalPanel = HFOriginalPanelForCell(
+		stamp.terrain, stamp.landform, stamp.plantLevel);
 	float originalMixer = HFOriginalSampleMixer(originalPanel, originalUV) *
 		originalCentralization;
 	float originalBlend = saturate(_HexHFOriginalBlend);
