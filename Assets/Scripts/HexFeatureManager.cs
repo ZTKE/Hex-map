@@ -21,12 +21,27 @@ public class HexFeatureManager : MonoBehaviour
 	HexMesh walls;
 
 	[SerializeField]
+	Material hfForegroundMaterial;
+
+	[SerializeField]
 	Transform wallTower, bridge;
 
 	[SerializeField]
 	Transform[] special;
 
 	Transform container;
+	HexHFForegroundMesh hfForeground;
+
+	void Awake()
+	{
+		if (hfForegroundMaterial)
+		{
+			GameObject foregroundObject = new("HF Foreground");
+			foregroundObject.transform.SetParent(transform, false);
+			hfForeground = foregroundObject.AddComponent<HexHFForegroundMesh>();
+			hfForeground.Initialize(hfForegroundMaterial);
+		}
+	}
 
 	/// <summary>
 	/// Clear all features.
@@ -40,12 +55,24 @@ public class HexFeatureManager : MonoBehaviour
 		container = new GameObject("Features Container").transform;
 		container.SetParent(transform, false);
 		walls.Clear();
+		hfForeground?.Clear();
 	}
 
 	/// <summary>
 	/// Apply triangulation.
 	/// </summary>
-	public void Apply() => walls.Apply();
+	public void Apply()
+	{
+		walls.Apply();
+		hfForeground?.Apply();
+	}
+
+	/// <summary>
+	/// Add the terrain-defined HF foreground for a cell to the chunk batch.
+	/// </summary>
+	public void AddHFForeground(
+		HexCellData cell, int cellIndex, Vector3 position) =>
+		hfForeground?.AddCell(cell, cellIndex, position);
 
 	Transform PickPrefab(
 		HexFeatureCollection[] collection, int level, float hash, float choice)
@@ -113,7 +140,9 @@ public class HexFeatureManager : MonoBehaviour
 			prefab = otherPrefab;
 			usedHash = hash.b;
 		}
-		otherPrefab = PickPrefab(
+		// HF vegetation is produced by the per-chunk atlas batch. Retain the old
+		// plant prefabs as a fallback when that material is not configured.
+		otherPrefab = hfForeground ? null : PickPrefab(
 			plantCollections, cell.PlantLevel, hash.c, hash.d);
 		if (prefab)
 		{

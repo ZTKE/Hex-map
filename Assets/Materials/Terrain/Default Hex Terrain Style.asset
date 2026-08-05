@@ -27,6 +27,26 @@ MonoBehaviour:
   hfTerrainBlend: 1
   hfReliefFootprint: 0.68
   hfRiverMixerStrength: 0.82
+  hfOriginalTerrainBlend: 1
+  hfOriginalStampScale: 1.6
+  hfOriginalHeightScale: 16
+  hfDirtDiffuse: {fileID: 2800000, guid: 137cb0679adafb344a419db9246b6a1a, type: 3}
+  hfDirtHeight: {fileID: 2800000, guid: e906119e70c4f61409d0ef08b1be048b, type: 3}
+  hfDirtMixer: {fileID: 2800000, guid: 5355ced6bddd47f4ab466b6ad891c4ae, type: 3}
+  hfPlainsDiffuse: {fileID: 2800000, guid: e2a873a5e4190bf418dbb1416d23c92f, type: 3}
+  hfCommonHeight: {fileID: 2800000, guid: 7e2d0523013679942a113b83cee06f1f, type: 3}
+  hfPlainsMixer: {fileID: 2800000, guid: b8f981c693af13143973ecb227b51b43, type: 3}
+  hfMarshDiffuse: {fileID: 2800000, guid: a667046128148f242ba0bd775886658c, type: 3}
+  hfMarshMixer: {fileID: 2800000, guid: ac6d98f228520b340b9982c39a9ca43c, type: 3}
+  hfHillDiffuse: {fileID: 2800000, guid: 9ac4b14bd7305f04e8c012060d91606b, type: 3}
+  hfHillHeight: {fileID: 2800000, guid: ea70f7011c809d64e86fe0222dfe1b43, type: 3}
+  hfHillMixer: {fileID: 2800000, guid: f0faf7b00dbd428478cf0e3e508cfa83, type: 3}
+  hfMountainDiffuse: {fileID: 2800000, guid: 805c124fdc6751540b420b657d76594a, type: 3}
+  hfMountainHeight: {fileID: 2800000, guid: f177cf61067771c4a97118a8b9361b49, type: 3}
+  hfMountainMixer: {fileID: 2800000, guid: adf2eadad4047cd47b6eeda1e2887845, type: 3}
+  hfRiverDiffuse: {fileID: 2800000, guid: aaacdd3620cc3e64a901b5f13346ac79, type: 3}
+  hfRiverHeight: {fileID: 2800000, guid: 039eaf037701f50428fc9bc7c2086fb9, type: 3}
+  hfRiverOriginalMixer: {fileID: 2800000, guid: a7555eb0448a2d344ab4899821462d9e, type: 3}
   rockAlbedo: {fileID: 2800000, guid: d60b6b2c8e154a88a789e47948756d38, type: 3}
   strataAlbedo: {fileID: 2800000, guid: aa90ef8b47f7443a9c407cb3ac3a209e, type: 3}
   rockNormal: {fileID: 2800000, guid: e193dd071f754d8b88121f65c2b54c99, type: 3}

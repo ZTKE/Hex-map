@@ -14,14 +14,33 @@ float _HexWaterStyleBlend;
 
 TEXTURE2D(_HexHFRiverMixer);
 SAMPLER(sampler_HexHFRiverMixer);
+TEXTURE2D(_HFRiverDiffuse);
+TEXTURE2D(_HFRiverMixer);
 float _HexHFRiverMixerStrength;
+float _HexHFOriginalBlend;
+
+float2 HexHFRiverUV(float2 riverUV)
+{
+	return float2(saturate(riverUV.x), frac(riverUV.y));
+}
 
 float HexHFRiverMask(float2 riverUV)
 {
-	float2 hfUV = float2(saturate(riverUV.x), frac(riverUV.y));
-	float mask = SAMPLE_TEXTURE2D(
+	float2 hfUV = HexHFRiverUV(riverUV);
+	float compactMask = SAMPLE_TEXTURE2D(
 		_HexHFRiverMixer, sampler_HexHFRiverMixer, hfUV).r;
+	float originalMask = SAMPLE_TEXTURE2D(
+		_HFRiverMixer, sampler_HexHFRiverMixer, hfUV).r;
+	float mask = lerp(
+		compactMask, originalMask, saturate(_HexHFOriginalBlend));
 	return lerp(1.0, mask, saturate(_HexHFRiverMixerStrength));
+}
+
+float3 HexHFOriginalRiverDiffuse(float2 riverUV)
+{
+	return SAMPLE_TEXTURE2D(
+		_HFRiverDiffuse, sampler_HexHFRiverMixer,
+		HexHFRiverUV(riverUV)).rgb;
 }
 
 float3 HexStyledColor(float3 fallback, float3 styled)
@@ -115,6 +134,9 @@ void GetFragmentDataEstuary_float(
 	float3 hfRiverColor = lerp(
 		_HexRiverWaterColor.rgb, _HexRiverBankColor.rgb, hfBank * 0.72);
 	float3 riverColor = HexStyledColor(Color.rgb, hfRiverColor);
+	riverColor = lerp(
+		riverColor, HexHFOriginalRiverDiffuse(RiverUV),
+		saturate(_HexHFOriginalBlend));
 	float3 c = saturate(lerp(coast, riverColor + river * 0.16, ShoreUV.x));
 	BaseColor = c * Visibility.x;
 	Alpha = lerp(Color.a, lerp(0.7, 0.5, shore),
@@ -160,6 +182,9 @@ void GetFragmentDataRiver_float(
 	float bankBlend = max(edgeSilt * 0.34, hfBank * 0.72);
 	float3 styled = lerp(
 		_HexRiverWaterColor.rgb, _HexRiverBankColor.rgb, bankBlend);
+	styled = lerp(
+		styled, HexHFOriginalRiverDiffuse(RiverUV),
+		saturate(_HexHFOriginalBlend));
 	float3 c = saturate(HexStyledColor(Color.rgb, styled) +
 		_HexShoreFoamColor.rgb * river * 0.12);
 	c = HexCivGrade(

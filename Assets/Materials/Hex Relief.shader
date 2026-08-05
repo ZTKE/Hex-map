@@ -21,8 +21,8 @@ Shader "Hex Map/Relief"
 	{
 		Tags
 		{
-			"RenderType" = "Transparent"
-			"Queue" = "Transparent-10"
+			"RenderType" = "Opaque"
+			"Queue" = "Geometry+1"
 			"RenderPipeline" = "UniversalPipeline"
 		}
 
@@ -32,7 +32,7 @@ Shader "Hex Map/Relief"
 			Tags { "LightMode" = "UniversalForward" }
 			Cull Back
 			ZWrite On
-			Blend SrcAlpha OneMinusSrcAlpha
+			Blend One Zero
 
 			HLSLPROGRAM
 			#pragma target 4.6
@@ -49,11 +49,13 @@ Shader "Hex Map/Relief"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 			#include "HexCellData.hlsl"
+			TEXTURE2D_ARRAY(_Terrain_Textures);
+			SAMPLER(sampler_Terrain_Textures);
+			SAMPLER(sampler_linear_clamp);
+			#define HF_TERRAIN_LINEAR_SAMPLER sampler_linear_clamp
 			#include "HexTerrainShape.hlsl"
 			#include "Hex Civilization Style.hlsl"
 
-			TEXTURE2D_ARRAY(_Terrain_Textures);
-			SAMPLER(sampler_Terrain_Textures);
 			TEXTURE2D(_HexTerrainStyleAtlas);
 			SAMPLER(sampler_HexTerrainStyleAtlas);
 			TEXTURE2D(_Relief_Rock);
@@ -114,6 +116,7 @@ Shader "Hex Map/Relief"
 				float4 style : TEXCOORD4;
 				float4 localData : TEXCOORD5;
 				half fogFactor : TEXCOORD6;
+				half3 hfDiffuse : TEXCOORD7;
 			};
 
 			TessControlPoint Vert(Attributes input)
@@ -205,6 +208,7 @@ Shader "Hex Map/Relief"
 				output.localData = float4(
 					surface.moduleUV, surface.moduleIndex, 0.0);
 				output.fogFactor = ComputeFogFactor(positionInputs.positionCS.z);
+				output.hfDiffuse = surface.diffuse;
 				return output;
 			}
 
@@ -416,10 +420,12 @@ Shader "Hex Map/Relief"
 				float mountainPresence = smoothstep(0.025, 0.10, height01);
 				float reliefPresence = lerp(
 					hillPresence, mountainPresence, isMountain);
-				// Once a real height exists it is the only authoritative footprint.
-				// Reusing the broad logical coverage here was what left visible stamp
-				// silhouettes around otherwise correctly blended terrain.
-				float edgeFade = reliefPresence;
+				float originalBlend = saturate(_HexHFOriginalBlend);
+				// HF renders a single opaque chunk surface. In faithful mode coverage,
+				// not relief height, owns the footprint so flat cells and mountain cells
+				// are guaranteed to meet on the same continuous surface.
+				float edgeFade = lerp(
+					reliefPresence, input.relief.w, originalBlend);
 				clip(edgeFade - 0.025);
 
 				half3 faceNormal = normalize(cross(
@@ -431,8 +437,11 @@ Shader "Hex Map/Relief"
 					vertexNormal, faceNormal, facetStrength));
 				float slope = 1.0 - saturate(normalWS.y);
 
-				half3 ground = SampleHFMixedReliefGround(
+				half3 legacyGround = SampleHFMixedReliefGround(
 					input.positionWS, terrainIndex);
+				half3 ground = lerp(
+					legacyGround, input.hfDiffuse, originalBlend);
+				float legacyArt = 1.0 - originalBlend;
 				float macroNoise = Fbm(
 					input.positionWS.xz * 0.055 + input.style.xy * 19.0);
 				float fineNoise = Fbm(
@@ -455,7 +464,7 @@ Shader "Hex Map/Relief"
 				half hillEarthBlend = terrainIndex > 3.5 ? 0.25 : 0.15;
 				half3 hillTop = lerp(ground, hillEarth, hillEarthBlend);
 				float hillMaterialPresence = hillHigh *
-					smoothstep(0.24, 0.68, edgeFade);
+					smoothstep(0.24, 0.68, edgeFade) * legacyArt;
 				color = lerp(color, hillTop, hillMaterialPresence);
 
 				half3 scree;
@@ -469,14 +478,14 @@ Shader "Hex Map/Relief"
 					smoothstep(0.035, 0.17, height01) *
 					(1.0 - smoothstep(0.3, 0.46, height01)) *
 					smoothstep(0.04, 0.32, edgeFade) *
-					smoothstep(0.28, 0.68, macroNoise);
+					smoothstep(0.28, 0.68, macroNoise) * legacyArt;
 				half3 screeMaterial = scree * lerp(0.86, 1.13, fineNoise);
 				color = lerp(color, screeMaterial, screeMask * 0.82);
 
 				float rockFace = isMountain * saturate(
 					smoothstep(0.12, 0.31, height01) * 0.78 +
 					smoothstep(0.08, 0.48, slope) * 0.62);
-				rockFace *= smoothstep(0.055, 0.3, edgeFade);
+				rockFace *= smoothstep(0.055, 0.3, edgeFade) * legacyArt;
 				float highBand = smoothstep(
 					0.54, 0.79, height01 + (macroNoise - 0.5) * 0.08);
 				half3 rockSurface = SampleRockSurface(
@@ -537,7 +546,7 @@ Shader "Hex Map/Relief"
 				float snow = isMountain *
 					smoothstep(snowLine, snowLine + snowTransition,
 						height01 + (macroNoise - 0.5) * 0.075) *
-					smoothstep(0.4, 0.76, normalWS.y);
+					smoothstep(0.4, 0.76, normalWS.y) * legacyArt;
 				half3 snowMaterial = (half3)_HexBiomeSnow[biomeIndex].rgb *
 					lerp(0.88, 1.0, rockValue);
 				color = lerp(color, snowMaterial, snow);
@@ -548,6 +557,7 @@ Shader "Hex Map/Relief"
 				float contactBand = smoothstep(0.025, 0.07, height01) *
 					(1.0 - smoothstep(0.14, 0.28, height01));
 				float contactAO = contactBand * smoothstep(0.16, 0.5, edgeFade);
+				contactAO *= legacyArt;
 				color *= 1.0 - contactAO * lerp(0.055, 0.085, isMountain);
 
 				bool editMode = false;
@@ -573,7 +583,7 @@ Shader "Hex Map/Relief"
 					color, input.positionWS, rawDiffuse,
 					lerp(0.86, 1.0, isMountain));
 				color = MixFog(color, input.fogFactor);
-				return half4(color, smoothstep(0.08, 0.42, edgeFade));
+				return half4(color, 1.0);
 			}
 			ENDHLSL
 		}
@@ -598,6 +608,8 @@ Shader "Hex Map/Relief"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 			#include "HexCellData.hlsl"
+			SAMPLER(sampler_linear_clamp);
+			#define HF_TERRAIN_LINEAR_SAMPLER sampler_linear_clamp
 			#include "HexTerrainShape.hlsl"
 
 			float3 _LightDirection;
@@ -723,7 +735,9 @@ Shader "Hex Map/Relief"
 				float hillPresence = smoothstep(0.08, 0.24, surface.height01);
 				float mountainPresence = smoothstep(0.025, 0.10, surface.height01);
 				output.edgeFade = lerp(
-					hillPresence, mountainPresence, isMountain);
+					lerp(hillPresence, mountainPresence, isMountain),
+					surface.coverage,
+					saturate(_HexHFOriginalBlend));
 				return output;
 			}
 

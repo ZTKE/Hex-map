@@ -43,6 +43,7 @@ struct HFReliefSurface
 	float terrain;
 	float coverage;
 	float4 style;
+	float3 diffuse;
 	float2 moduleUV;
 	float moduleIndex;
 };
@@ -118,7 +119,7 @@ float4 HFSampleShapeTexel(float2 offset)
 {
 	float2 uv = (offset + 0.5) * _HexCellData_TexelSize.xy;
 	return SAMPLE_TEXTURE2D_LOD(
-		_HexTerrainShapeData, sampler_HexTerrainShapeData, uv, 0);
+		_HexTerrainShapeData, sampler_HexCellData, uv, 0);
 }
 
 HFCellShape HFLoadCell(float2 requestedOffset)
@@ -428,7 +429,78 @@ void HFEvaluateStamp(
 		cell, modulePoint, radius, edgeFade, selectedModule, connection);
 }
 
-HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
+struct HFOriginalReliefAccumulator
+{
+	float globalMaximum;
+	float mixerWeight;
+	float fillWeight;
+	float mixerHeight;
+	float fillHeight;
+	float3 mixerDiffuse;
+	float3 fillDiffuse;
+	float weightedBaseY;
+	float baseWeight;
+	float strongestScore;
+	float landform;
+	float terrain;
+	float4 style;
+	float2 strongestUV;
+	float strongestPanel;
+	float riverDistance;
+};
+
+void HFAccumulateOriginalRelief(
+	inout HFOriginalReliefAccumulator accumulator,
+	float2 requestedOffset,
+	float2 samplePoint)
+{
+	HFCellShape cell = HFLoadCell(requestedOffset);
+	if (cell.valid < 0.5)
+	{
+		return;
+	}
+
+	// Relief-local coordinates already use the hex outer radius, which is the
+	// unit used by HF's original 1.6-scale baking quads.
+	float2 uv = HFOriginalUV(samplePoint, cell.angle);
+	float centralization = HFOriginalCentralization(uv);
+	if (centralization <= 0.0001)
+	{
+		return;
+	}
+
+	float panel = HFOriginalPanelFor(cell.terrain, cell.landform);
+	float mixer = HFOriginalSampleMixer(panel, uv) * centralization;
+	float heightSample = HFOriginalSampleHeight(panel, uv);
+	float3 diffuseSample = HFOriginalSampleDiffuse(panel, uv);
+
+	accumulator.globalMaximum = max(accumulator.globalMaximum, mixer);
+	accumulator.mixerWeight += mixer;
+	accumulator.fillWeight += centralization;
+	accumulator.mixerHeight += heightSample * mixer;
+	accumulator.fillHeight += heightSample * centralization;
+	accumulator.mixerDiffuse += diffuseSample * mixer;
+	accumulator.fillDiffuse += diffuseSample * centralization;
+	accumulator.weightedBaseY += cell.baseY * centralization;
+	accumulator.baseWeight += centralization;
+	accumulator.riverDistance = min(
+		accumulator.riverDistance,
+		HFRiverDistance(samplePoint, cell.riverMask));
+
+	float score = mixer + centralization * 0.001;
+	if (score > accumulator.strongestScore)
+	{
+		accumulator.strongestScore = score;
+		accumulator.landform = cell.landform;
+		accumulator.terrain = cell.terrain;
+		accumulator.style = cell.hash;
+		accumulator.strongestUV = uv;
+		accumulator.strongestPanel = panel;
+	}
+}
+
+HFReliefSurface HF_EvaluateOriginalRelief(
+	float cellIndex, float2 localPosition)
 {
 	HFReliefSurface result;
 	result.y = 0.0;
@@ -438,6 +510,116 @@ HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
 	result.terrain = 0.0;
 	result.coverage = 0.0;
 	result.style = 0.0;
+	result.diffuse = 0.0;
+	result.moduleUV = localPosition * 0.5 + 0.5;
+	result.moduleIndex = -1.0;
+
+	float width = _HexCellData_TexelSize.z;
+	float2 rootOffset = float2(
+		fmod(floor(cellIndex + 0.5), width),
+		floor((cellIndex + 0.5) / width));
+	HFCellShape rootCell = HFLoadCell(rootOffset);
+	if (rootCell.valid < 0.5)
+	{
+		return result;
+	}
+
+	HFOriginalReliefAccumulator accumulator;
+	accumulator.globalMaximum = 0.0;
+	accumulator.mixerWeight = 0.0;
+	accumulator.fillWeight = 0.0;
+	accumulator.mixerHeight = 0.0;
+	accumulator.fillHeight = 0.0;
+	accumulator.mixerDiffuse = 0.0;
+	accumulator.fillDiffuse = 0.0;
+	accumulator.weightedBaseY = 0.0;
+	accumulator.baseWeight = 0.0;
+	accumulator.strongestScore = -1.0;
+	accumulator.landform = rootCell.landform;
+	accumulator.terrain = rootCell.terrain;
+	accumulator.style = rootCell.hash;
+	accumulator.strongestUV = 0.5;
+	accumulator.strongestPanel = HFOriginalPanelFor(
+		rootCell.terrain, rootCell.landform);
+	accumulator.riverDistance = 1000.0;
+
+	HFAccumulateOriginalRelief(
+		accumulator, rootOffset, localPosition);
+	[unroll]
+	for (int direction = 0; direction < 6; direction++)
+	{
+		float2 firstOffset = HFNeighborOffset(rootOffset, direction);
+		float2 firstCenter = HFNeighborCenter(direction);
+		HFAccumulateOriginalRelief(
+			accumulator, firstOffset, localPosition - firstCenter);
+
+		// A rotated 1.6-radius square can just reach the root hex from the
+		// diagonal half of ring two. Sampling these six candidates makes the
+		// result root-invariant at shared hex vertices; the axial half of the
+		// ring is farther than HF's 1.6*sqrt(2) potential reach.
+		int nextDirection = (direction + 1) % 6;
+		float2 cornerOffset = HFNeighborOffset(
+			firstOffset, nextDirection);
+		float2 cornerCenter = firstCenter +
+			HFNeighborCenter(nextDirection);
+		HFAccumulateOriginalRelief(
+			accumulator, cornerOffset, localPosition - cornerCenter);
+	}
+
+	float missingStrength = 1.0 - saturate(accumulator.globalMaximum);
+	float totalWeight = accumulator.mixerWeight +
+		accumulator.fillWeight * missingStrength;
+	if (totalWeight <= 0.0001)
+	{
+		return result;
+	}
+	float inverseWeight = 1.0 / totalWeight;
+	float heightSample = (accumulator.mixerHeight +
+		accumulator.fillHeight * missingStrength) * inverseWeight;
+	result.diffuse = (accumulator.mixerDiffuse +
+		accumulator.fillDiffuse * missingStrength) * inverseWeight;
+
+	float baseY = accumulator.baseWeight > 0.0001 ?
+		accumulator.weightedBaseY / accumulator.baseWeight : rootCell.baseY;
+	float displacement =
+		(heightSample - 0.5) * _HexHFOriginalHeightScale;
+	// HF attenuates downward displacement to avoid deep pits.
+	if (displacement < 0.0)
+	{
+		displacement *= 0.6;
+	}
+	float riverFade = smoothstep(
+		_HexReliefRiverCarve.x,
+		_HexReliefRiverCarve.y,
+		accumulator.riverDistance);
+	// River water is 1.5 units below the logical elevation in this project.
+	// Sink the stamped terrain slightly farther at the channel core.
+	displacement = lerp(-1.65, displacement, riverFade);
+
+	result.height = displacement;
+	result.height01 = saturate(
+		displacement / max(_HexHFOriginalHeightScale * 0.5, 0.001));
+	result.landform = accumulator.landform;
+	result.terrain = accumulator.terrain;
+	result.coverage = 1.0;
+	result.style = accumulator.style;
+	result.moduleUV = accumulator.strongestUV;
+	result.moduleIndex = accumulator.strongestPanel;
+	result.y = baseY + displacement + 0.018;
+	return result;
+}
+
+HFReliefSurface HF_EvaluateLegacyRelief(float cellIndex, float2 localPosition)
+{
+	HFReliefSurface result;
+	result.y = 0.0;
+	result.height = 0.0;
+	result.height01 = 0.0;
+	result.landform = 0.0;
+	result.terrain = 0.0;
+	result.coverage = 0.0;
+	result.style = 0.0;
+	result.diffuse = 0.0;
 	result.moduleUV = localPosition * 0.5 + 0.5;
 	result.moduleIndex = -1.0;
 
@@ -532,6 +714,38 @@ HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
 	result.height01 = saturate(result.height / max(maximum, 0.001));
 	result.y = baseY + result.height + 0.018;
 	return result;
+}
+
+HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
+{
+	float originalBlend = saturate(_HexHFOriginalBlend);
+	if (originalBlend > 0.999)
+	{
+		return HF_EvaluateOriginalRelief(cellIndex, localPosition);
+	}
+	HFReliefSurface legacy = HF_EvaluateLegacyRelief(
+		cellIndex, localPosition);
+	if (originalBlend < 0.001)
+	{
+		return legacy;
+	}
+	HFReliefSurface original = HF_EvaluateOriginalRelief(
+		cellIndex, localPosition);
+	legacy.y = lerp(legacy.y, original.y, originalBlend);
+	legacy.height = lerp(legacy.height, original.height, originalBlend);
+	legacy.height01 = lerp(
+		legacy.height01, original.height01, originalBlend);
+	legacy.coverage = lerp(legacy.coverage, original.coverage, originalBlend);
+	legacy.diffuse = original.diffuse;
+	if (originalBlend > 0.5)
+	{
+		legacy.landform = original.landform;
+		legacy.terrain = original.terrain;
+		legacy.style = original.style;
+		legacy.moduleUV = original.moduleUV;
+		legacy.moduleIndex = original.moduleIndex;
+	}
+	return legacy;
 }
 
 #endif

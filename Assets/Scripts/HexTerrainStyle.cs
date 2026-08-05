@@ -114,6 +114,29 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[Range(0f, 1f)] public float hfReliefFootprint = 0.68f;
 	[Range(0f, 1f)] public float hfRiverMixerStrength = 0.82f;
 
+	[Header("HoneyFramework original terrain triplets")]
+	[Tooltip("Use HF's original diffuse, height, and mixer stamps while retaining the logical map data path.")]
+	[Range(0f, 1f)] public float hfOriginalTerrainBlend = 1f;
+	[Min(0.4f)] public float hfOriginalStampScale = 1.6f;
+	[Min(0.1f)] public float hfOriginalHeightScale = 16f;
+	public Texture2D hfDirtDiffuse;
+	public Texture2D hfDirtHeight;
+	public Texture2D hfDirtMixer;
+	public Texture2D hfPlainsDiffuse;
+	public Texture2D hfCommonHeight;
+	public Texture2D hfPlainsMixer;
+	public Texture2D hfMarshDiffuse;
+	public Texture2D hfMarshMixer;
+	public Texture2D hfHillDiffuse;
+	public Texture2D hfHillHeight;
+	public Texture2D hfHillMixer;
+	public Texture2D hfMountainDiffuse;
+	public Texture2D hfMountainHeight;
+	public Texture2D hfMountainMixer;
+	public Texture2D hfRiverDiffuse;
+	public Texture2D hfRiverHeight;
+	public Texture2D hfRiverOriginalMixer;
+
 	[Header("Material transitions")]
 	[Range(0f, 1f)] public float snowLowHeight = 0.75f;
 	[Range(0f, 1f)] public float snowHighHeight = 0.8125f;
@@ -375,6 +398,27 @@ public sealed class HexTerrainStyle : ScriptableObject
 		{
 			Shader.SetGlobalTexture("_HexHFRiverMixer", hfRiverMixer);
 		}
+		SetGlobalTexture("_HFDirtDiffuse", hfDirtDiffuse);
+		SetGlobalTexture("_HFDirtHeight", hfDirtHeight);
+		SetGlobalTexture("_HFDirtMixer", hfDirtMixer);
+		SetGlobalTexture("_HFPlainsDiffuse", hfPlainsDiffuse);
+		SetGlobalTexture("_HFCommonHeight", hfCommonHeight);
+		SetGlobalTexture("_HFPlainsMixer", hfPlainsMixer);
+		SetGlobalTexture("_HFMarshDiffuse", hfMarshDiffuse);
+		SetGlobalTexture("_HFMarshMixer", hfMarshMixer);
+		SetGlobalTexture("_HFHillDiffuse", hfHillDiffuse);
+		SetGlobalTexture("_HFHillHeight", hfHillHeight);
+		SetGlobalTexture("_HFHillMixer", hfHillMixer);
+		SetGlobalTexture("_HFMountainDiffuse", hfMountainDiffuse);
+		SetGlobalTexture("_HFMountainHeight", hfMountainHeight);
+		SetGlobalTexture("_HFMountainMixer", hfMountainMixer);
+		SetGlobalTexture("_HFRiverDiffuse", hfRiverDiffuse);
+		SetGlobalTexture("_HFRiverHeight", hfRiverHeight);
+		SetGlobalTexture("_HFRiverMixer", hfRiverOriginalMixer);
+		Shader.SetGlobalFloat("_HexHFOriginalBlend",
+			HasHFOriginalTerrainSet() ? hfOriginalTerrainBlend : 0f);
+		Shader.SetGlobalFloat("_HexHFOriginalStampScale", hfOriginalStampScale);
+		Shader.SetGlobalFloat("_HexHFOriginalHeightScale", hfOriginalHeightScale);
 		Shader.SetGlobalFloat("_HexHFStampScale", hfStampScale);
 		Shader.SetGlobalFloat(
 			"_HexHFBlendStrength", hfTerrainMixer ? hfTerrainBlend : 0f);
@@ -411,6 +455,21 @@ public sealed class HexTerrainStyle : ScriptableObject
 		Shader.SetGlobalColor("_HexCivWarmLightTint", shaderWarmLightTint);
 		Shader.SetGlobalColor("_HexCivCoolShadowTint", shaderCoolShadowTint);
 	}
+
+	static void SetGlobalTexture(string propertyName, Texture texture)
+	{
+		if (texture)
+		{
+			Shader.SetGlobalTexture(propertyName, texture);
+		}
+	}
+
+	bool HasHFOriginalTerrainSet() =>
+		hfDirtDiffuse && hfDirtHeight && hfDirtMixer &&
+		hfPlainsDiffuse && hfCommonHeight && hfPlainsMixer &&
+		hfMarshDiffuse && hfMarshMixer &&
+		hfHillDiffuse && hfHillHeight && hfHillMixer &&
+		hfMountainDiffuse && hfMountainHeight && hfMountainMixer;
 
 	MountainModule GetModule(int index)
 	{

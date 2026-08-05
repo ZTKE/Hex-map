@@ -74,6 +74,7 @@ MonoBehaviour:
   - prefabs:
     - {fileID: 4000013997932258, guid: eeb3748a5f0ed40f3ad86263ab781421, type: 3}
     - {fileID: 4000013997932258, guid: 2fe8d139a980145f997e9f4c3e1c2606, type: 3}
+  hfForegroundMaterial: {fileID: 2100000, guid: cb2b42e0e0dd410db6d32255dbdbf6a5, type: 2}
   walls: {fileID: 114000013599494320}
   wallTower: {fileID: 4000011665626236, guid: 1589993158ba34786b54f448bdeb6085, type: 3}
   bridge: {fileID: 4000012598710820, guid: 234387bb7219042168570e127fbd5b58, type: 3}

@@ -114,10 +114,16 @@ public class HexGridChunk : MonoBehaviour
 	{
 		HexCellData cell = Grid.CellData[cellIndex];
 		Vector3 cellPosition = Grid.CellPositions[cellIndex];
-		if (!cell.IsUnderwater && !cell.HasRoads && !cell.IsSpecial &&
-			HasReliefInNeighborhood(cell))
+		// HF owns one continuous chunk surface. Every dry cell participates even
+		// when it is flat, contains a road, or hosts a special feature; otherwise
+		// the sparse patch set itself becomes a visible hexagonal mask.
+		if (!cell.IsUnderwater)
 		{
 			relief.AddCell(cellIndex, cellPosition);
+			if (!cell.IsSpecial)
+			{
+				features.AddHFForeground(cell, cellIndex, cellPosition);
+			}
 		}
 		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 		{
@@ -135,23 +141,6 @@ public class HexGridChunk : MonoBehaviour
 				features.AddSpecialFeature(cell, cellPosition);
 			}
 		}
-	}
-
-	bool HasReliefInNeighborhood(HexCellData cell)
-	{
-		if (cell.landform != HexLandform.Flat)
-		{
-			return true;
-		}
-		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
-		{
-			if (Grid.TryGetCellIndex(cell.coordinates.Step(d), out int neighborIndex) &&
-				Grid.CellData[neighborIndex].landform != HexLandform.Flat)
-			{
-				return true;
-			}
-		}
-		return false;
 	}
 
 	void Triangulate(

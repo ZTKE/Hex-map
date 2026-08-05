@@ -1,10 +1,11 @@
 ﻿#include "../HexCellData.hlsl"
 
+TEXTURE2D(_HexTerrainStyleAtlas);
+SAMPLER(sampler_HexTerrainStyleAtlas);
+#define HF_TERRAIN_LINEAR_SAMPLER sampler_HexTerrainStyleAtlas
 #include "../HFTerrainBlend.hlsl"
 #include "../Hex Civilization Style.hlsl"
 
-TEXTURE2D(_HexTerrainStyleAtlas);
-SAMPLER(sampler_HexTerrainStyleAtlas);
 float _HexTerrainAtlasBlend;
 float _HexTerrainAtlasTiling;
 float _HexTerrainMacroVariation;
@@ -172,6 +173,11 @@ float4 GetHFMixedTerrainColor(
 	if (mix.terrain4 > 0.0001)
 		mixed += SampleTerrainSurface(
 			TerrainTextures, WorldPosition, 4.0) * mix.terrain4;
+	// In faithful mode the colour comes from the same rotated HF diffuse stamps
+	// that produced the ownership field, instead of merely recolouring the
+	// current world-tiled biome textures.
+	mixed = lerp(
+		mixed, float4(mix.diffuse, 1.0), saturate(_HexHFOriginalBlend));
 
 	float meshVisibility = dot(MeshWeights, Visibility.xyz);
 	mixed *= meshVisibility;
@@ -226,10 +232,16 @@ void GetFragmentData_float(
 			TerrainTextures, WorldPosition, Terrain, Weights, Visibility, 1) +
 		GetTerrainColor(
 			TerrainTextures, WorldPosition, Terrain, Weights, Visibility, 2);
-	float hfBlend;
-	float4 hfMixed = GetHFMixedTerrainColor(
-		TerrainTextures, WorldPosition, Weights, Visibility, hfBlend);
-	c = lerp(c, hfMixed, hfBlend);
+	// The opaque HF relief surface covers every dry cell in faithful mode.
+	// Avoid evaluating the same seven source stamps again underneath it; this
+	// base graph remains visible for the unchanged ocean and coast pipeline.
+	if (_HexHFOriginalBlend < 0.999)
+	{
+		float hfBlend;
+		float4 hfMixed = GetHFMixedTerrainColor(
+			TerrainTextures, WorldPosition, Weights, Visibility, hfBlend);
+		c = lerp(c, hfMixed, hfBlend);
+	}
 
 	BaseColor = ColorizeSubmergence(c.rgb, WorldPosition.y, Terrain.w);
 	float paintedLight = 0.52 +
@@ -237,6 +249,15 @@ void GetFragmentData_float(
 	BaseColor = HexCivGrade(BaseColor, WorldPosition, paintedLight, 1.0);
 
 	HexGridData hgd = GetHexGridData(WorldPosition.xz);
+	if (_HexHFOriginalBlend > 0.999)
+	{
+		// HF has one displaced terrain surface, not a second flat mesh beneath
+		// it. Remove the old dry-land surface so negative height-map values and
+		// river cuts cannot reveal the previous biome colours through the HF mesh.
+		float4 rootCellData = GetCellData(
+			hgd.cellOffsetCoordinates, false);
+		clip(rootCellData.b - 0.0001);
+	}
 
 	if (ShowGrid)
 	{
