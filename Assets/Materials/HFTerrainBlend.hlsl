@@ -11,6 +11,9 @@ TEXTURE2D(_HexHFTerrainMixer);
 #ifndef HF_TERRAIN_LINEAR_SAMPLER
 	#define HF_TERRAIN_LINEAR_SAMPLER sampler_HexCellData
 #endif
+#ifndef HF_TERRAIN_POINT_SAMPLER
+	#define HF_TERRAIN_POINT_SAMPLER sampler_HexCellData
+#endif
 
 #include "HFOriginalTerrain.hlsl"
 
@@ -45,6 +48,9 @@ struct HFTerrainMixWeights
 	float total;
 	float rootValid;
 	float rootUnderwater;
+	// Normalized HF sea ownership at this world point. Terrain weights remain
+	// land-only so existing biome sampling never treats the sea as a sixth biome.
+	float water;
 	float3 diffuse;
 };
 
@@ -123,7 +129,7 @@ float4 HFMixSampleShape(float2 offset)
 {
 	float2 uv = (offset + 0.5) * _HexCellData_TexelSize.xy;
 	return SAMPLE_TEXTURE2D_LOD(
-		_HexTerrainShapeData, sampler_HexCellData, uv, 0);
+		_HexTerrainShapeData, HF_TERRAIN_POINT_SAMPLER, uv, 0);
 }
 
 float HFMixPanelFor(float terrain, float landform)
@@ -214,16 +220,14 @@ HFTerrainMixStamp HFMixLoadStamp(
 		stamp.angle);
 	float originalCentralization = HFOriginalCentralization(originalUV);
 	float originalPanel = HFOriginalPanelForCell(
-		stamp.terrain, stamp.landform, stamp.plantLevel);
+		stamp.terrain, stamp.landform, stamp.plantLevel, stamp.underwater);
 	float originalMixer = HFOriginalSampleMixer(originalPanel, originalUV) *
 		originalCentralization;
 	float originalBlend = saturate(_HexHFOriginalBlend);
 	stamp.localUV = lerp(stamp.localUV, originalUV, originalBlend);
 	stamp.centralization = lerp(
 		legacyMixer, originalCentralization, originalBlend);
-	stamp.mixer = lerp(legacyMixer, originalMixer, originalBlend) *
-		(1.0 - stamp.underwater);
-	stamp.centralization *= 1.0 - stamp.underwater;
+	stamp.mixer = lerp(legacyMixer, originalMixer, originalBlend);
 	stamp.diffuse = HFOriginalSampleDiffuse(originalPanel, originalUV);
 	return stamp;
 }
@@ -277,14 +281,17 @@ void HFMixAccumulateStamp(
 	float mixerWeight = pow(
 		saturate(stamp.mixer), lerp(0.72, 1.0, originalBlend));
 	float fillWeight = stamp.centralization;
+	float land = 1.0 - stamp.underwater;
 	HFMixAccumulateTerrainWeight(
-		mix.terrain0123, mix.terrain4, stamp.terrain, mixerWeight);
+		mix.terrain0123, mix.terrain4, stamp.terrain, mixerWeight * land);
 	HFMixAccumulateTerrainWeight(
-		fillMix.terrain0123, fillMix.terrain4, stamp.terrain, fillWeight);
-	mix.total += mixerWeight;
-	fillMix.total += fillWeight;
-	mixerDiffuse += stamp.diffuse * mixerWeight;
-	fillDiffuse += stamp.diffuse * fillWeight;
+		fillMix.terrain0123, fillMix.terrain4, stamp.terrain, fillWeight * land);
+	mix.total += mixerWeight * land;
+	fillMix.total += fillWeight * land;
+	mix.water += mixerWeight * stamp.underwater;
+	fillMix.water += fillWeight * stamp.underwater;
+	mixerDiffuse += stamp.diffuse * mixerWeight * land;
+	fillDiffuse += stamp.diffuse * fillWeight * land;
 	globalMaximum = max(globalMaximum, stamp.mixer);
 }
 
@@ -301,6 +308,7 @@ HFTerrainMixWeights HFMixEvaluateNeighborhood(
 	mix.total = 0.0;
 	mix.rootValid = 0.0;
 	mix.rootUnderwater = 0.0;
+	mix.water = 0.0;
 	mix.diffuse = 0.0;
 	HFTerrainMixWeights fillMix = mix;
 	float3 mixerDiffuse = 0.0;
@@ -356,7 +364,11 @@ HFTerrainMixWeights HFMixEvaluateNeighborhood(
 	mix.terrain0123 += fillMix.terrain0123 * missingStrength;
 	mix.terrain4 += fillMix.terrain4 * missingStrength;
 	mix.total += fillMix.total * missingStrength;
+	mix.water += fillMix.water * missingStrength;
 	mixerDiffuse += fillDiffuse * missingStrength;
+	float ownershipTotal = mix.total + mix.water;
+	mix.water = ownershipTotal > 0.0001 ?
+		mix.water / ownershipTotal : mix.rootUnderwater;
 
 	// Terrain-specific continuous modulation dissolves the remaining regular
 	// iso-weight rhythm of a discrete hex field. In a single-biome interior it

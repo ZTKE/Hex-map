@@ -1,8 +1,10 @@
-﻿#include "../HexCellData.hlsl"
+#include "../HexCellData.hlsl"
 
 TEXTURE2D(_HexTerrainStyleAtlas);
 SAMPLER(sampler_HexTerrainStyleAtlas);
+SAMPLER(sampler_point_clamp);
 #define HF_TERRAIN_LINEAR_SAMPLER sampler_HexTerrainStyleAtlas
+#define HF_TERRAIN_POINT_SAMPLER sampler_point_clamp
 #include "../HFTerrainBlend.hlsl"
 #include "../Hex Civilization Style.hlsl"
 
@@ -251,12 +253,10 @@ void GetFragmentData_float(
 	HexGridData hgd = GetHexGridData(WorldPosition.xz);
 	if (_HexHFOriginalBlend > 0.999)
 	{
-		// HF has one displaced terrain surface, not a second flat mesh beneath
-		// it. Remove the old dry-land surface so negative height-map values and
-		// river cuts cannot reveal the previous biome colours through the HF mesh.
-		float4 rootCellData = GetCellData(
-			hgd.cellOffsetCoordinates, false);
-		clip(rootCellData.b - 0.0001);
+		// HF has one displaced terrain surface for both land and seabed. Remove
+		// the complete Catlike base surface; keeping its underwater half would
+		// put a hex-stepped floor beneath the continuous Water_h coastline.
+		clip(-1.0);
 	}
 
 	if (ShowGrid)

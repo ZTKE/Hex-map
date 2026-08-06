@@ -20,6 +20,9 @@ float4 _HexReliefRiverCarve;
 
 #define HF_PI 3.14159265359
 #define HF_SQRT3_OVER_2 0.86602540378
+#define HF_SHAPE_RIVER_MASK 63u
+#define HF_SHAPE_UNDERWATER_BIT 64u
+#define HF_SHAPE_COAST_BIT 128u
 
 struct HFCellShape
 {
@@ -29,6 +32,8 @@ struct HFCellShape
 	float baseY;
 	float terrain;
 	float plantLevel;
+	float underwater;
+	float waterSurfaceY;
 	uint neighborMask;
 	uint riverMask;
 	float4 hash;
@@ -50,6 +55,11 @@ struct HFReliefSurface
 	float3 diffuse;
 	float2 moduleUV;
 	float moduleIndex;
+	// Continuous share of HF's sea triplet at this point and the nearby water
+	// plane height. Together they drive beach / shallow-water art without using
+	// a straight hex-edge shore strip.
+	float seaInfluence;
+	float waterSurfaceY;
 };
 
 float HFHash21(float2 p, float salt)
@@ -123,7 +133,48 @@ float4 HFSampleShapeTexel(float2 offset)
 {
 	float2 uv = (offset + 0.5) * _HexCellData_TexelSize.xy;
 	return SAMPLE_TEXTURE2D_LOD(
-		_HexTerrainShapeData, sampler_HexCellData, uv, 0);
+		_HexTerrainShapeData, HF_TERRAIN_POINT_SAMPLER, uv, 0);
+}
+
+float2 HFCellIndexToOffset(float cellIndex)
+{
+	float width = _HexCellData_TexelSize.z;
+	float index = floor(cellIndex + 0.5);
+	return float2(fmod(index, width), floor(index / width));
+}
+
+uint HFShapeWaterFlags(float2 requestedOffset)
+{
+	float2 offset;
+	if (!HFResolveOffset(requestedOffset, offset))
+	{
+		return 0u;
+	}
+	return (uint)round(HFSampleShapeTexel(offset).b * 255.0);
+}
+
+float HFShapeCoastFlag(float2 requestedOffset)
+{
+	return (HFShapeWaterFlags(requestedOffset) & HF_SHAPE_COAST_BIT) != 0u ?
+		1.0 : 0.0;
+}
+
+int HFClosestNeighborDirection(float2 outwardLocalPosition)
+{
+	int bestDirection = 0;
+	float bestScore = -1000.0;
+	[unroll]
+	for (int direction = 0; direction < 6; direction++)
+	{
+		float score = dot(
+			outwardLocalPosition, HFNeighborCenter(direction));
+		if (score > bestScore)
+		{
+			bestScore = score;
+			bestDirection = direction;
+		}
+	}
+	return bestDirection;
 }
 
 HFCellShape HFLoadCell(float2 requestedOffset)
@@ -137,6 +188,8 @@ HFCellShape HFLoadCell(float2 requestedOffset)
 	cell.baseY = 0.0;
 	cell.terrain = 0.0;
 	cell.plantLevel = 0.0;
+	cell.underwater = 0.0;
+	cell.waterSurfaceY = 0.0;
 	cell.neighborMask = 0u;
 	cell.riverMask = 0u;
 	cell.hash = 0.0;
@@ -153,15 +206,25 @@ HFCellShape HFLoadCell(float2 requestedOffset)
 	uint packedNeighborsAndPlants = (uint)round(encoded.g * 255.0);
 	cell.neighborMask = packedNeighborsAndPlants & 63u;
 	cell.plantLevel = (float)(packedNeighborsAndPlants >> 6u);
-	cell.riverMask = (uint)round(encoded.b * 255.0);
+	cell.riverMask =
+		(uint)round(encoded.b * 255.0) & HF_SHAPE_RIVER_MASK;
 	cell.baseY = encoded.a * 30.0;
 	float4 mapData = GetCellData(offset, false);
 	cell.terrain = round(mapData.a * 255.0);
-	// Underwater cells do not contribute relief stamps. Their logical terrain
-	// byte remains available for the regular water / coast shaders.
-	cell.valid *= 1.0 - step(0.0001, mapData.b);
+	cell.underwater = step(0.0001, mapData.b);
+	cell.waterSurfaceY = mapData.b * 30.0;
 	cell.hash = HFHash42(offset);
 	return cell;
+}
+
+float HFStabilizeOceanSurfaceY(HFReliefSurface surface)
+{
+	float hasWater = step(0.0001, surface.waterSurfaceY);
+	float strongSea = smoothstep(0.82, 0.96, surface.seaInfluence) *
+		hasWater * step(0.999, _HexHFOriginalBlend);
+	float safeSeabedY = min(
+		surface.y, surface.waterSurfaceY - 0.08);
+	return lerp(surface.y, safeSeabedY, strongSea);
 }
 
 int HFCountBits(uint value)
@@ -452,6 +515,10 @@ struct HFOriginalReliefAccumulator
 	float2 strongestUV;
 	float strongestPanel;
 	float riverDistance;
+	float mixerSea;
+	float fillSea;
+	float weightedWaterSurfaceY;
+	float waterSurfaceWeight;
 };
 
 void HFAccumulateOriginalRelief(
@@ -475,7 +542,7 @@ void HFAccumulateOriginalRelief(
 	}
 
 	float panel = HFOriginalPanelForCell(
-		cell.terrain, cell.landform, cell.plantLevel);
+		cell.terrain, cell.landform, cell.plantLevel, cell.underwater);
 	float mixer = HFOriginalSampleMixer(panel, uv) * centralization;
 	float heightSample = HFOriginalSampleHeight(panel, uv);
 
@@ -484,8 +551,13 @@ void HFAccumulateOriginalRelief(
 	accumulator.fillWeight += centralization;
 	accumulator.mixerHeight += heightSample * mixer;
 	accumulator.fillHeight += heightSample * centralization;
+	accumulator.mixerSea += mixer * cell.underwater;
+	accumulator.fillSea += centralization * cell.underwater;
 	accumulator.weightedBaseY += cell.baseY * centralization;
 	accumulator.baseWeight += centralization;
+	accumulator.weightedWaterSurfaceY +=
+		cell.waterSurfaceY * centralization * cell.underwater;
+	accumulator.waterSurfaceWeight += centralization * cell.underwater;
 	accumulator.riverDistance = min(
 		accumulator.riverDistance,
 		HFRiverDistance(samplePoint, cell.riverMask));
@@ -517,6 +589,8 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	result.diffuse = 0.0;
 	result.moduleUV = localPosition * 0.5 + 0.5;
 	result.moduleIndex = -1.0;
+	result.seaInfluence = 0.0;
+	result.waterSurfaceY = 0.0;
 
 	float width = _HexCellData_TexelSize.z;
 	float2 rootOffset = float2(
@@ -542,8 +616,13 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	accumulator.style = rootCell.hash;
 	accumulator.strongestUV = 0.5;
 	accumulator.strongestPanel = HFOriginalPanelForCell(
-		rootCell.terrain, rootCell.landform, rootCell.plantLevel);
+		rootCell.terrain, rootCell.landform, rootCell.plantLevel,
+		rootCell.underwater);
 	accumulator.riverDistance = 1000.0;
+	accumulator.mixerSea = 0.0;
+	accumulator.fillSea = 0.0;
+	accumulator.weightedWaterSurfaceY = 0.0;
+	accumulator.waterSurfaceWeight = 0.0;
 
 	HFAccumulateOriginalRelief(
 		accumulator, rootOffset, localPosition);
@@ -583,8 +662,11 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	// tessellated vertex and would also repeat the work for the shadow offsets.
 	result.diffuse = 0.0;
 
-	float baseY = accumulator.baseWeight > 0.0001 ?
-		accumulator.weightedBaseY / accumulator.baseWeight : rootCell.baseY;
+	// HF's baked height is centered around 0.5 and both its terrain mesh and
+	// water plane share one Y datum. Blending Catlike's per-cell dry / shallow /
+	// deep base elevations here shifts the zero crossing and creates false sand
+	// islands whose coarse triangulation changes with camera distance.
+	float baseY = _HexHFOriginalDatumY;
 	float displacement =
 		(heightSample - 0.5) * _HexHFOriginalHeightScale;
 	// HF attenuates downward displacement to avoid deep pits.
@@ -610,6 +692,11 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	result.style = accumulator.style;
 	result.moduleUV = accumulator.strongestUV;
 	result.moduleIndex = accumulator.strongestPanel;
+	result.seaInfluence = saturate(
+		(accumulator.mixerSea + accumulator.fillSea * missingStrength) *
+		inverseWeight);
+	result.waterSurfaceY = accumulator.waterSurfaceWeight > 0.0001 ?
+		_HexHFOriginalDatumY : 0.0;
 	result.y = baseY + displacement + 0.018;
 	return result;
 }
@@ -628,6 +715,8 @@ HFReliefSurface HF_EvaluateLegacyRelief(float cellIndex, float2 localPosition)
 	result.diffuse = 0.0;
 	result.moduleUV = localPosition * 0.5 + 0.5;
 	result.moduleIndex = -1.0;
+	result.seaInfluence = 0.0;
+	result.waterSurfaceY = 0.0;
 
 	float width = _HexCellData_TexelSize.z;
 	float2 rootOffset = float2(
@@ -747,6 +836,10 @@ HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
 		legacy.bakedHeight, original.bakedHeight, originalBlend);
 	legacy.coverage = lerp(legacy.coverage, original.coverage, originalBlend);
 	legacy.diffuse = original.diffuse;
+	legacy.seaInfluence = lerp(
+		legacy.seaInfluence, original.seaInfluence, originalBlend);
+	legacy.waterSurfaceY = lerp(
+		legacy.waterSurfaceY, original.waterSurfaceY, originalBlend);
 	if (originalBlend > 0.5)
 	{
 		legacy.landform = original.landform;
@@ -786,8 +879,17 @@ void HFAccumulateOriginalDiffuse(
 	}
 
 	float panel = HFOriginalPanelForCell(
-		cell.terrain, cell.landform, cell.plantLevel);
+		cell.terrain, cell.landform, cell.plantLevel, cell.underwater);
 	float mixer = HFOriginalSampleMixer(panel, uv) * centralization;
+	// HF does not blend Sand1_d as an ordinary terrain diffuse. Its Oven draws
+	// sea colour in a separate border-only pass below the 0.55 height contour.
+	// Excluding it here prevents the complete Water_m ownership lobes from
+	// becoming opaque beige terrain; the relief fragment adds the submerged
+	// sand/deep-floor art from the final reconstructed height instead.
+	if (cell.underwater > 0.5)
+	{
+		return;
+	}
 	float3 diffuseSample = HFOriginalSampleDiffuse(panel, uv);
 	accumulator.globalMaximum = max(accumulator.globalMaximum, mixer);
 	accumulator.mixerWeight += mixer;
@@ -842,10 +944,7 @@ float3 HF_EvaluateOriginalDiffuse(float cellIndex, float2 localPosition)
 	return totalWeight > 0.0001 ?
 		(accumulator.mixerDiffuse +
 			accumulator.fillDiffuse * missingStrength) / totalWeight :
-		HFOriginalSampleDiffuse(
-			HFOriginalPanelForCell(
-				rootCell.terrain, rootCell.landform, rootCell.plantLevel),
-			HFOriginalUV(localPosition, rootCell.angle));
+		float3(0.5, 0.5, 0.5);
 }
 
 #endif

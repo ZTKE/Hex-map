@@ -54,6 +54,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _HexReliefStampScale: 1.22
+    - _HexReliefCoastTessellation: 8
     - _HexReliefTessellation: 8
     - _HexReliefTessellationEnd: 280
     - _HexReliefTessellationStart: 80

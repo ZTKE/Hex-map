@@ -87,6 +87,24 @@ public class HexMesh : MonoBehaviour
 	}
 
 	/// <summary>
+	/// Expand the renderer bounds after triangulation. Flat, shader-driven
+	/// surfaces such as the HF ocean otherwise have a zero-height AABB, which
+	/// can be rejected too aggressively near a camera frustum edge.
+	/// </summary>
+	public void ExpandBounds(Vector3 padding)
+	{
+		if (!hexMesh || hexMesh.vertexCount == 0)
+		{
+			return;
+		}
+
+		hexMesh.RecalculateBounds();
+		Bounds bounds = hexMesh.bounds;
+		bounds.SetMinMax(bounds.min - padding, bounds.max + padding);
+		hexMesh.bounds = bounds;
+	}
+
+	/// <summary>
 	/// Add a triangle, applying perturbation to the positions.
 	/// </summary>
 	/// <param name="v1">First vertex position.</param>

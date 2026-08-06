@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -194,11 +194,16 @@ public class HexCellShaderData : MonoBehaviour
 
 		HexCellData cell = Grid.CellData[cellIndex];
 		int neighborMask = 0;
+		bool isInCoastInfluenceBand = IsInCoastInfluenceBand(cell);
 		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 		{
 			if (!Grid.TryGetCellIndex(
-				cell.coordinates.Step(d), out int neighborIndex) ||
-				Grid.CellData[neighborIndex].landform != cell.landform ||
+				cell.coordinates.Step(d), out int neighborIndex))
+			{
+				continue;
+			}
+			HexCellData neighbor = Grid.CellData[neighborIndex];
+			if (neighbor.landform != cell.landform ||
 				cell.landform == HexLandform.Flat)
 			{
 				continue;
@@ -230,13 +235,57 @@ public class HexCellShaderData : MonoBehaviour
 		float surfaceY = Mathf.Clamp(Grid.CellPositions[cellIndex].y, 0f, 30f);
 		int packedNeighborsAndPlants = neighborMask |
 			(Mathf.Clamp(cell.PlantLevel, 0, 3) << 6);
+		// The two unused high bits of the river byte carry water topology for
+		// shader LOD decisions. Keeping this in the logical map texture lets the
+		// hull shader stabilize only coastline patches instead of tessellating the
+		// entire world at the maximum level.
+		int packedRiverAndWater = riverMask |
+			(cell.IsUnderwater ? 1 << 6 : 0) |
+			(isInCoastInfluenceBand ? 1 << 7 : 0);
 		terrainShapeTextureData[cellIndex] = new Color32(
 			(byte)packedLandformAndAngle,
 			(byte)packedNeighborsAndPlants,
-			(byte)riverMask,
+			(byte)packedRiverAndWater,
 			(byte)Mathf.RoundToInt(surfaceY * (255f / 30f)));
 		terrainShapeDirty = true;
 		enabled = true;
+	}
+
+	/// <summary>
+	/// HF stamps overlap the source cell and its neighbors. Keep one additional
+	/// logical ring around a wet/dry transition so every tessellation patch that
+	/// can sample a sea stamp receives the same stable minimum subdivision.
+	/// </summary>
+	bool IsInCoastInfluenceBand(HexCellData cell)
+	{
+		bool underwater = cell.IsUnderwater;
+		for (HexDirection firstDirection = HexDirection.NE;
+			firstDirection <= HexDirection.NW; firstDirection++)
+		{
+			if (!Grid.TryGetCellIndex(
+				cell.coordinates.Step(firstDirection), out int firstIndex))
+			{
+				continue;
+			}
+
+			HexCellData first = Grid.CellData[firstIndex];
+			if (first.IsUnderwater != underwater)
+			{
+				return true;
+			}
+
+			for (HexDirection secondDirection = HexDirection.NE;
+				secondDirection <= HexDirection.NW; secondDirection++)
+			{
+				if (Grid.TryGetCellIndex(
+					first.coordinates.Step(secondDirection), out int secondIndex) &&
+					Grid.CellData[secondIndex].IsUnderwater != underwater)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/// <summary>
@@ -245,14 +294,31 @@ public class HexCellShaderData : MonoBehaviour
 	/// </summary>
 	public void RefreshTerrainShapeWithDependents(int cellIndex)
 	{
-		RefreshTerrainShape(cellIndex);
-		HexCoordinates coordinates = Grid.CellData[cellIndex].coordinates;
-		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		HashSet<int> affected = new() { cellIndex };
+		HexCoordinates center = Grid.CellData[cellIndex].coordinates;
+		for (HexDirection firstDirection = HexDirection.NE;
+			firstDirection <= HexDirection.NW; firstDirection++)
 		{
-			if (Grid.TryGetCellIndex(coordinates.Step(d), out int neighborIndex))
+			if (!Grid.TryGetCellIndex(
+				center.Step(firstDirection), out int firstIndex))
 			{
-				RefreshTerrainShape(neighborIndex);
+				continue;
 			}
+			affected.Add(firstIndex);
+			HexCoordinates first = Grid.CellData[firstIndex].coordinates;
+			for (HexDirection secondDirection = HexDirection.NE;
+				secondDirection <= HexDirection.NW; secondDirection++)
+			{
+				if (Grid.TryGetCellIndex(
+					first.Step(secondDirection), out int secondIndex))
+				{
+					affected.Add(secondIndex);
+				}
+			}
+		}
+		foreach (int affectedIndex in affected)
+		{
+			RefreshTerrainShape(affectedIndex);
 		}
 	}
 

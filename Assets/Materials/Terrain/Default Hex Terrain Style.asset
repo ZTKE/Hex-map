@@ -45,6 +45,9 @@ MonoBehaviour:
   hfMountainDiffuse: {fileID: 2800000, guid: 805c124fdc6751540b420b657d76594a, type: 3}
   hfMountainHeight: {fileID: 2800000, guid: f177cf61067771c4a97118a8b9361b49, type: 3}
   hfMountainMixer: {fileID: 2800000, guid: adf2eadad4047cd47b6eeda1e2887845, type: 3}
+  hfSeaDiffuse: {fileID: 2800000, guid: bbb22a6643171964c93131f9fa2aa4e9, type: 3}
+  hfSeaHeight: {fileID: 2800000, guid: c4a617a43e8acc045b5a9de58738f5bc, type: 3}
+  hfSeaMixer: {fileID: 2800000, guid: 30a5f54bbaf06df45a72e9272e877493, type: 3}
   hfRiverDiffuse: {fileID: 2800000, guid: aaacdd3620cc3e64a901b5f13346ac79, type: 3}
   hfRiverHeight: {fileID: 2800000, guid: 039eaf037701f50428fc9bc7c2086fb9, type: 3}
   hfRiverOriginalMixer: {fileID: 2800000, guid: a7555eb0448a2d344ab4899821462d9e, type: 3}

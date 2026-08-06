@@ -25,6 +25,12 @@ TEXTURE2D(_HFMountainDiffuse);
 TEXTURE2D(_HFMountainHeight);
 TEXTURE2D(_HFMountainMixer);
 
+// HF treats the sea as another terrain triplet. Sand supplies the exposed
+// border, while Water_h and Water_m lower and shape the continuous seabed.
+TEXTURE2D(_HFSeaDiffuse);
+TEXTURE2D(_HFSeaHeight);
+TEXTURE2D(_HFSeaMixer);
+
 TEXTURE2D(_HFRiverDiffuse);
 TEXTURE2D(_HFRiverHeight);
 TEXTURE2D(_HFRiverMixer);
@@ -33,12 +39,14 @@ float _HexHFOriginalBlend;
 float _HexHFOriginalStampScale;
 float _HexHFOriginalHeightScale;
 float _HexHFOriginalHeightLod;
+float _HexHFOriginalDatumY;
 
 #define HF_ORIGINAL_DIRT 0.0
 #define HF_ORIGINAL_PLAINS 1.0
 #define HF_ORIGINAL_MARSH 2.0
 #define HF_ORIGINAL_HILL 3.0
 #define HF_ORIGINAL_MOUNTAIN 4.0
+#define HF_ORIGINAL_SEA 5.0
 
 float HFOriginalPanelFor(float terrain, float landform)
 {
@@ -52,8 +60,12 @@ float HFOriginalPanelFor(float terrain, float landform)
 }
 
 float HFOriginalPanelForCell(
-	float terrain, float landform, float plantLevel)
+	float terrain, float landform, float plantLevel, float underwater)
 {
+	if (underwater > 0.5)
+	{
+		return HF_ORIGINAL_SEA;
+	}
 	// HF's forest terrain definitions (OID 5 and OID 9) both use the
 	// Plains1 triplet; foreground density is a terrain-definition choice, not a
 	// recolour layered over Dirt or Marsh.
@@ -101,9 +113,12 @@ float3 HFOriginalSampleDiffuse(float panel, float2 uv)
 	else if (panel < 3.5)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
 			_HFHillDiffuse, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).rgb;
-	else
+	else if (panel < 4.5)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
 			_HFMountainDiffuse, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).rgb;
+	else
+		sampleValue = SAMPLE_TEXTURE2D_LOD(
+			_HFSeaDiffuse, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).rgb;
 	return sampleValue;
 }
 
@@ -123,9 +138,13 @@ float HFOriginalSampleHeight(float panel, float2 uv)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
 			_HFHillHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV,
 			_HexHFOriginalHeightLod).r;
-	else
+	else if (panel < 4.5)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
 			_HFMountainHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV,
+			_HexHFOriginalHeightLod).r;
+	else
+		sampleValue = SAMPLE_TEXTURE2D_LOD(
+			_HFSeaHeight, HF_TERRAIN_LINEAR_SAMPLER, safeUV,
 			_HexHFOriginalHeightLod).r;
 	return sampleValue;
 }
@@ -146,9 +165,12 @@ float HFOriginalSampleMixer(float panel, float2 uv)
 	else if (panel < 3.5)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
 			_HFHillMixer, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).r;
-	else
+	else if (panel < 4.5)
 		sampleValue = SAMPLE_TEXTURE2D_LOD(
 			_HFMountainMixer, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).r;
+	else
+		sampleValue = SAMPLE_TEXTURE2D_LOD(
+			_HFSeaMixer, HF_TERRAIN_LINEAR_SAMPLER, safeUV, 0).r;
 	return sampleValue;
 }
 

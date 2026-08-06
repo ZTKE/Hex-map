@@ -11,6 +11,7 @@ Shader "Hex Map/Relief"
 		[HideInInspector] _Use_Mountain_Color_Decal ("Use Mountain Color Decal", Float) = 0
 		[NoScaleOffset] _HexMountainMasks ("Logical Mountain Height Masks", 2DArray) = "white" {}
 		_HexReliefTessellation ("Relief Tessellation", Range(1, 16)) = 8
+		_HexReliefCoastTessellation ("Coast Minimum Tessellation", Range(1, 16)) = 8
 		_HexReliefTessellationStart ("Tessellation Start Distance", Float) = 80
 		_HexReliefTessellationEnd ("Tessellation End Distance", Float) = 280
 		_HexReliefStampScale ("HF Stamp Overlap", Range(1.01, 1.5)) = 1.22
@@ -52,7 +53,9 @@ Shader "Hex Map/Relief"
 			TEXTURE2D_ARRAY(_Terrain_Textures);
 			SAMPLER(sampler_Terrain_Textures);
 			SAMPLER(sampler_linear_clamp);
+			SAMPLER(sampler_point_clamp);
 			#define HF_TERRAIN_LINEAR_SAMPLER sampler_linear_clamp
+			#define HF_TERRAIN_POINT_SAMPLER sampler_point_clamp
 			#include "HexTerrainShape.hlsl"
 			#include "Hex Civilization Style.hlsl"
 
@@ -68,6 +71,7 @@ Shader "Hex Map/Relief"
 			SAMPLER(sampler_Mountain_Color_Decal);
 			float _Use_Mountain_Color_Decal;
 			float _HexReliefTessellation;
+			float _HexReliefCoastTessellation;
 			float _HexReliefTessellationStart;
 			float _HexReliefTessellationEnd;
 			float _HexTerrainAtlasBlend;
@@ -83,6 +87,10 @@ Shader "Hex Map/Relief"
 			float4 _HexBiomeSnow[5];
 			float _HexBiomeHillLine[5];
 			float _HexBiomeSnowLine[5];
+			float4 _HexDeepOceanColor;
+			float4 _HexShallowWaterColor;
+			float4 _HexWetSandColor;
+			float4 _HexDrySandColor;
 
 			struct Attributes
 			{
@@ -117,6 +125,7 @@ Shader "Hex Map/Relief"
 				float4 localData : TEXCOORD5;
 				half fogFactor : TEXCOORD6;
 				float2 localPosition : TEXCOORD7;
+				float2 waterData : TEXCOORD8;
 			};
 
 			TessControlPoint Vert(Attributes input)
@@ -143,15 +152,28 @@ Shader "Hex Map/Relief"
 				InputPatch<TessControlPoint, 3> patch)
 			{
 				TessellationFactors factors;
-				factors.edge[0] = ReliefTessellationFactor(
-					(patch[1].positionOS.xyz + patch[2].positionOS.xyz) * 0.5);
-				factors.edge[1] = ReliefTessellationFactor(
-					(patch[2].positionOS.xyz + patch[0].positionOS.xyz) * 0.5);
-				factors.edge[2] = ReliefTessellationFactor(
-					(patch[0].positionOS.xyz + patch[1].positionOS.xyz) * 0.5);
-				factors.inside = ReliefTessellationFactor(
+				float2 rootOffset = HFCellIndexToOffset(
+					patch[0].cellIndices.x);
+				float rootCoast = HFShapeCoastFlag(rootOffset);
+				float2 outerEdgeLocal =
+					(patch[1].localPosition + patch[2].localPosition) * 0.5;
+				int outerDirection = HFClosestNeighborDirection(outerEdgeLocal);
+				float neighborCoast = HFShapeCoastFlag(
+					HFNeighborOffset(rootOffset, outerDirection));
+				float rootMinimum = lerp(
+					1.0, _HexReliefCoastTessellation, rootCoast);
+				float outerMinimum = lerp(
+					1.0, _HexReliefCoastTessellation,
+					max(rootCoast, neighborCoast));
+				factors.edge[0] = max(outerMinimum, ReliefTessellationFactor(
+					(patch[1].positionOS.xyz + patch[2].positionOS.xyz) * 0.5));
+				factors.edge[1] = max(rootMinimum, ReliefTessellationFactor(
+					(patch[2].positionOS.xyz + patch[0].positionOS.xyz) * 0.5));
+				factors.edge[2] = max(rootMinimum, ReliefTessellationFactor(
+					(patch[0].positionOS.xyz + patch[1].positionOS.xyz) * 0.5));
+				factors.inside = max(rootMinimum, ReliefTessellationFactor(
 					(patch[0].positionOS.xyz + patch[1].positionOS.xyz +
-					patch[2].positionOS.xyz) / 3.0);
+					patch[2].positionOS.xyz) / 3.0));
 				return factors;
 			}
 
@@ -193,7 +215,7 @@ Shader "Hex Map/Relief"
 
 				HFReliefSurface surface = HF_EvaluateRelief(
 					cellIndices.x, localPosition);
-				positionOS.y = surface.y;
+				positionOS.y = HFStabilizeOceanSurfaceY(surface);
 				VertexPositionInputs positionInputs =
 					GetVertexPositionInputs(positionOS.xyz);
 				VertexNormalInputs normalInputs = GetVertexNormalInputs(normalOS);
@@ -206,9 +228,11 @@ Shader "Hex Map/Relief"
 				output.cellIndices = cellIndices;
 				output.style = surface.style;
 				output.localData = float4(
-					surface.moduleUV, surface.moduleIndex, 0.0);
+					surface.moduleUV, surface.moduleIndex, surface.seaInfluence);
 				output.fogFactor = ComputeFogFactor(positionInputs.positionCS.z);
 				output.localPosition = localPosition;
+				output.waterData = float2(
+					surface.seaInfluence, surface.waterSurfaceY);
 				return output;
 			}
 
@@ -436,6 +460,26 @@ Shader "Hex Map/Relief"
 				{
 					half3 color = HF_EvaluateOriginalDiffuse(
 						input.cellIndices.x, input.localPosition);
+					// HF's Sand / Water triplet owns the shoreline shape, while
+					// the current palette keeps the project's established coast art.
+					float seaInfluence = saturate(input.waterData.x);
+					float waterDepth = max(
+						input.waterData.y - input.positionWS.y, 0.0);
+					float submerged = step(0.001, waterDepth);
+					half3 sand = lerp(
+						_HexDrySandColor.rgb, _HexWetSandColor.rgb,
+						smoothstep(0.0, 0.55, waterDepth));
+					half3 deepFloor = lerp(
+						_HexShallowWaterColor.rgb, _HexDeepOceanColor.rgb,
+						smoothstep(1.2, 4.2, waterDepth)) * 0.78h;
+					half3 coastArt = lerp(
+						sand, deepFloor, smoothstep(0.35, 1.25, waterDepth));
+					half hfDetail = dot(
+						color, half3(0.299h, 0.587h, 0.114h));
+					coastArt *= lerp(0.84h, 1.14h, hfDetail);
+					color = lerp(
+						color, coastArt,
+						smoothstep(0.06, 0.78, seaInfluence) * submerged);
 
 					bool editMode = false;
 					#ifdef _HEX_MAP_EDIT_MODE
@@ -449,8 +493,15 @@ Shader "Hex Map/Relief"
 					Light mainLight = GetMainLight(shadowCoord);
 					half rawDiffuse = saturate(dot(vertexNormal, mainLight.direction));
 					half diffuse = 0.3h + 0.7h * rawDiffuse;
+					// The transparent water already supplies its own shallow-water
+					// grading. Letting the submerged HF floor receive the land shadow
+					// map produces a second dark outline around every coast. Preserve
+					// normal lighting, but remove only shadow-map attenuation below
+					// the common water datum.
+					half shadowAttenuation = lerp(
+						mainLight.shadowAttenuation, 1.0h, submerged);
 					half3 lighting = SampleSH(vertexNormal) +
-						mainLight.color * diffuse * mainLight.shadowAttenuation;
+						mainLight.color * diffuse * shadowAttenuation;
 					color *= min(lighting, 1.2h);
 					color = MixFog(color, input.fogFactor);
 					return half4(color, 1.0h);
@@ -640,12 +691,15 @@ Shader "Hex Map/Relief"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 			#include "HexCellData.hlsl"
 			SAMPLER(sampler_linear_clamp);
+			SAMPLER(sampler_point_clamp);
 			#define HF_TERRAIN_LINEAR_SAMPLER sampler_linear_clamp
+			#define HF_TERRAIN_POINT_SAMPLER sampler_point_clamp
 			#include "HexTerrainShape.hlsl"
 
 			float3 _LightDirection;
 			float3 _LightPosition;
 			float _HexReliefTessellation;
+			float _HexReliefCoastTessellation;
 			float _HexReliefTessellationStart;
 			float _HexReliefTessellationEnd;
 
@@ -701,15 +755,28 @@ Shader "Hex Map/Relief"
 				InputPatch<ShadowControlPoint, 3> patch)
 			{
 				ShadowTessellationFactors factors;
-				factors.edge[0] = ShadowTessellationFactor(
-					(patch[1].positionOS.xyz + patch[2].positionOS.xyz) * 0.5);
-				factors.edge[1] = ShadowTessellationFactor(
-					(patch[2].positionOS.xyz + patch[0].positionOS.xyz) * 0.5);
-				factors.edge[2] = ShadowTessellationFactor(
-					(patch[0].positionOS.xyz + patch[1].positionOS.xyz) * 0.5);
-				factors.inside = ShadowTessellationFactor(
+				float2 rootOffset = HFCellIndexToOffset(
+					patch[0].cellIndices.x);
+				float rootCoast = HFShapeCoastFlag(rootOffset);
+				float2 outerEdgeLocal =
+					(patch[1].localPosition + patch[2].localPosition) * 0.5;
+				int outerDirection = HFClosestNeighborDirection(outerEdgeLocal);
+				float neighborCoast = HFShapeCoastFlag(
+					HFNeighborOffset(rootOffset, outerDirection));
+				float rootMinimum = lerp(
+					1.0, _HexReliefCoastTessellation, rootCoast);
+				float outerMinimum = lerp(
+					1.0, _HexReliefCoastTessellation,
+					max(rootCoast, neighborCoast));
+				factors.edge[0] = max(outerMinimum, ShadowTessellationFactor(
+					(patch[1].positionOS.xyz + patch[2].positionOS.xyz) * 0.5));
+				factors.edge[1] = max(rootMinimum, ShadowTessellationFactor(
+					(patch[2].positionOS.xyz + patch[0].positionOS.xyz) * 0.5));
+				factors.edge[2] = max(rootMinimum, ShadowTessellationFactor(
+					(patch[0].positionOS.xyz + patch[1].positionOS.xyz) * 0.5));
+				factors.inside = max(rootMinimum, ShadowTessellationFactor(
 					(patch[0].positionOS.xyz + patch[1].positionOS.xyz +
-					patch[2].positionOS.xyz) / 3.0);
+					patch[2].positionOS.xyz) / 3.0));
 				return factors;
 			}
 
@@ -746,7 +813,7 @@ Shader "Hex Map/Relief"
 					patch[2].localPosition * barycentricCoordinates.z;
 				HFReliefSurface surface = HF_EvaluateRelief(
 					cellIndices.x, localPosition);
-				positionOS.y = surface.y;
+				positionOS.y = HFStabilizeOceanSurfaceY(surface);
 				float3 positionWS = TransformObjectToWorld(positionOS.xyz);
 				float3 normalWS = TransformObjectToWorldNormal(float3(0.0, 1.0, 0.0));
 				#if _CASTING_PUNCTUAL_LIGHT_SHADOW

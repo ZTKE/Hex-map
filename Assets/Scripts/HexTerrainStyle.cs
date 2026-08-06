@@ -135,6 +135,12 @@ public sealed class HexTerrainStyle : ScriptableObject
 	public Texture2D hfMountainDiffuse;
 	public Texture2D hfMountainHeight;
 	public Texture2D hfMountainMixer;
+	[Tooltip("HF sea border diffuse (Sand1_d). The current water shader still owns the final ocean colours.")]
+	public Texture2D hfSeaDiffuse;
+	[Tooltip("HF sea height stamp (Water_h), used to form the continuous shoreline.")]
+	public Texture2D hfSeaHeight;
+	[Tooltip("HF sea ownership stamp (Water_m), used to blend land into the seabed.")]
+	public Texture2D hfSeaMixer;
 	public Texture2D hfRiverDiffuse;
 	public Texture2D hfRiverHeight;
 	public Texture2D hfRiverOriginalMixer;
@@ -225,6 +231,13 @@ public sealed class HexTerrainStyle : ScriptableObject
 
 	public float GetMountainWidth(int terrainTypeIndex) =>
 		terrainTypeIndex == 0 ? desertMountainWidth : mountainWidth;
+
+	/// <summary>
+	/// Whether the complete HF surface, including its sea-height stamps, owns
+	/// the land / ocean intersection instead of Catlike's straight edge strip.
+	/// </summary>
+	public bool UsesHFOriginalCoast =>
+		hfOriginalTerrainBlend > 0.999f && HasHFOriginalTerrainSet();
 
 	public int SelectMountainModule(int neighborMask, HexHash hash)
 	{
@@ -431,6 +444,9 @@ public sealed class HexTerrainStyle : ScriptableObject
 		SetGlobalTexture("_HFMountainDiffuse", hfMountainDiffuse);
 		SetGlobalTexture("_HFMountainHeight", hfMountainHeight);
 		SetGlobalTexture("_HFMountainMixer", hfMountainMixer);
+		SetGlobalTexture("_HFSeaDiffuse", hfSeaDiffuse);
+		SetGlobalTexture("_HFSeaHeight", hfSeaHeight);
+		SetGlobalTexture("_HFSeaMixer", hfSeaMixer);
 		SetGlobalTexture("_HFRiverDiffuse", hfRiverDiffuse);
 		SetGlobalTexture("_HFRiverHeight", hfRiverHeight);
 		SetGlobalTexture("_HFRiverMixer", hfRiverOriginalMixer);
@@ -439,6 +455,13 @@ public sealed class HexTerrainStyle : ScriptableObject
 		Shader.SetGlobalFloat("_HexHFOriginalStampScale", hfOriginalStampScale);
 		Shader.SetGlobalFloat("_HexHFOriginalHeightScale", hfOriginalHeightScale);
 		Shader.SetGlobalFloat("_HexHFOriginalHeightLod", hfOriginalHeightLod);
+		// Original HF places both the terrain mesh and the water plane on one
+		// datum, then lets the centered height texture decide which side of the
+		// water line is visible. Catlike's separate shallow/deep base elevations
+		// must not enter that reconstruction.
+		Shader.SetGlobalFloat(
+			"_HexHFOriginalDatumY",
+			HexMetrics.visualWaterLevel * HexMetrics.elevationStep);
 		Shader.SetGlobalFloat("_HexHFStampScale", hfStampScale);
 		Shader.SetGlobalFloat(
 			"_HexHFBlendStrength", hfTerrainMixer ? hfTerrainBlend : 0f);
@@ -489,7 +512,8 @@ public sealed class HexTerrainStyle : ScriptableObject
 		hfPlainsDiffuse && hfCommonHeight && hfPlainsMixer &&
 		hfMarshDiffuse && hfMarshMixer &&
 		hfHillDiffuse && hfHillHeight && hfHillMixer &&
-		hfMountainDiffuse && hfMountainHeight && hfMountainMixer;
+		hfMountainDiffuse && hfMountainHeight && hfMountainMixer &&
+		hfSeaDiffuse && hfSeaHeight && hfSeaMixer;
 
 	MountainModule GetModule(int index)
 	{

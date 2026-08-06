@@ -1,4 +1,4 @@
-﻿#include "HexCellData.hlsl"
+#include "HexCellData.hlsl"
 #include "Water.hlsl"
 
 #include "Hex Civilization Style.hlsl"
@@ -14,10 +14,15 @@ float _HexWaterStyleBlend;
 
 TEXTURE2D(_HexHFRiverMixer);
 SAMPLER(sampler_HexHFRiverMixer);
-TEXTURE2D(_HFRiverDiffuse);
-TEXTURE2D(_HFRiverMixer);
+// Shader Graph cannot legally reuse a named texture sampler for HF's other
+// texture objects. Use Unity's recognized inline state instead; every HF
+// lookup still shares this single linear-clamp sampler state.
+SAMPLER(sampler_linear_clamp);
+SAMPLER(sampler_point_clamp);
+#define HF_TERRAIN_LINEAR_SAMPLER sampler_linear_clamp
+#define HF_TERRAIN_POINT_SAMPLER sampler_point_clamp
+#include "HexTerrainShape.hlsl"
 float _HexHFRiverMixerStrength;
-float _HexHFOriginalBlend;
 
 float2 HexHFRiverUV(float2 riverUV)
 {
@@ -210,12 +215,56 @@ void GetFragmentDataWater_float(
 	out float Exploration)
 {
 	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
+	float shore = 0.0;
+	float waterCoverage = 1.0;
+	if (_HexHFOriginalBlend > 0.999)
+	{
+		HexGridData grid = GetHexGridData(WorldPosition.xz);
+		float2 hexPosition = WoldToHexSpace(WorldPosition.xz);
+		float2 local = hexPosition - grid.cellCenter;
+		// Seamless wrapping moves complete chunk columns by exactly one map
+		// width. GetHexGridData therefore returns an X offset outside the logical
+		// texture range for those visual copies. Wrapping the texture UV alone is
+		// not enough: linearizing the unwrapped X first carries +/-width into the
+		// row and makes the water mask sample the previous / next Z cell.
+		float2 resolvedCellOffset;
+		HFResolveOffset(grid.cellOffsetCoordinates, resolvedCellOffset);
+		float cellIndex = resolvedCellOffset.y *
+			_HexCellData_TexelSize.z + resolvedCellOffset.x;
+		// Use the same reconstructed height that displaces the opaque HF
+		// surface. Foam therefore follows the actual water / terrain
+		// intersection instead of the much wider Sea mixer ownership band.
+		HFReliefSurface coastSurface = HF_EvaluateOriginalRelief(
+			cellIndex, local * (1.5 / HF_MIXER_SQRT3_OVER_2));
+		float signedWaterDepth =
+			WorldPosition.y - HFStabilizeOceanSurfaceY(coastSurface);
+		// The relief mesh is distance-tessellated, so its rasterized depth is an
+		// approximation of the HF height field. Resolve the water mask from the
+		// exact logical height again per pixel; this keeps the shoreline invariant
+		// when the camera moves and prevents low-LOD sand triangles from occluding
+		// the water plane.
+		float coverageWidth = max(fwidth(signedWaterDepth) * 1.5, 0.015);
+		waterCoverage = smoothstep(
+			-coverageWidth, coverageWidth, signedWaterDepth);
+		float waterDepth = max(signedWaterDepth, 0.0);
+		// The old ShoreUV covered only a narrow edge strip. HF's beach slope is
+		// much wider, so remap world-space depth to an equally narrow contour or
+		// the complete shallow stamp turns into a large white / sand blob.
+		shore = 1.0 - smoothstep(0.04, 0.52, waterDepth);
+	}
+	float foam = Foam(shore, WorldPosition.xz, Time, NoiseTexture);
 	float3 water = HexStyledColor(Color.rgb, _HexDeepOceanColor.rgb);
-	float3 c = saturate(water + _HexShoreFoamColor.rgb * waves * 0.12);
+	float3 coast = HexShoreColor(
+		shore, foam, waves * (1.0 - shore), WorldPosition.xz, water);
+	float3 c = saturate(lerp(
+		water + _HexShoreFoamColor.rgb * waves * 0.12,
+		coast, saturate(_HexHFOriginalBlend)));
 	c = HexCivGrade(c, WorldPosition, 0.66 + waves * 0.2, 0.48);
 
 	BaseColor = c * Visibility.x;
-	Alpha = lerp(Color.a, 0.76, saturate(_HexWaterStyleBlend));
+	float coastAlpha = lerp(0.82, 0.68, smoothstep(0.38, 0.94, shore));
+	Alpha = lerp(
+		Color.a, coastAlpha, saturate(_HexWaterStyleBlend)) * waterCoverage;
 	Exploration = Visibility.y;
 }
 

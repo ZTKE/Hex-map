@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 /// <summary>
 /// Component that manages a single chunk of <see cref="HexGrid"/>.
@@ -29,6 +29,7 @@ public class HexGridChunk : MonoBehaviour
 
 	HexReliefMesh relief;
 	HexCoastMesh coastCliffs;
+	bool useHFOriginalCoast;
 
 	int[] cellIndices;
 
@@ -36,6 +37,9 @@ public class HexGridChunk : MonoBehaviour
 
 	void Awake()
 	{
+		HexTerrainStyle activeStyle = terrainStyle ?
+			terrainStyle : HexTerrainStyle.RuntimeDefault;
+		useHFOriginalCoast = activeStyle.UsesHFOriginalCoast;
 		gridCanvas = GetComponentInChildren<Canvas>();
 		cellIndices = new int[HexMetrics.chunkSizeX * HexMetrics.chunkSizeZ];
 		GameObject reliefObject = new("Relief");
@@ -86,6 +90,16 @@ public class HexGridChunk : MonoBehaviour
 	/// </summary>
 	public void Triangulate()
 	{
+		// Enter Play Mode Options can keep scene objects alive across script and
+		// style reloads, so do not rely on the value captured once in Awake.
+		HexTerrainStyle activeStyle = terrainStyle ?
+			terrainStyle : HexTerrainStyle.RuntimeDefault;
+		useHFOriginalCoast = activeStyle.UsesHFOriginalCoast;
+		// Exact HF mode renders one displaced continuous surface. Keep the old
+		// Catlike terrain mesh for its collider/data only; drawing it underneath
+		// Relief creates a second, camera-dependent intersection surface that
+		// appears as tan polygons whenever HF dips below the common datum.
+		terrain.GetComponent<MeshRenderer>().enabled = !useHFOriginalCoast;
 		terrain.Clear();
 		rivers.Clear();
 		roads.Clear();
@@ -103,6 +117,17 @@ public class HexGridChunk : MonoBehaviour
 		rivers.Apply();
 		roads.Apply();
 		water.Apply();
+		if (useHFOriginalCoast)
+		{
+			// The HF sea is a flat per-chunk plane but its visible silhouette is
+			// decided by the displaced relief shader. Give culling a conservative
+			// volume so an off-centre camera cannot reject water that is still on
+			// screen and reveal the warm seabed underneath.
+			water.ExpandBounds(new Vector3(
+				HexMetrics.outerRadius,
+				HexMetrics.elevationStep * 12f,
+				HexMetrics.outerRadius));
+		}
 		waterShore.Apply();
 		estuaries.Apply();
 		features.Apply();
@@ -117,13 +142,21 @@ public class HexGridChunk : MonoBehaviour
 		// HF owns one continuous chunk surface. Every dry cell participates even
 		// when it is flat, contains a road, or hosts a special feature; otherwise
 		// the sparse patch set itself becomes a visible hexagonal mask.
-		if (!cell.IsUnderwater)
+		if (useHFOriginalCoast || !cell.IsUnderwater)
 		{
 			relief.AddCell(cellIndex, cellPosition);
+		}
+		if (!cell.IsUnderwater)
+		{
 			if (!cell.IsSpecial)
 			{
 				features.AddHFForeground(cell, cellIndex, cellPosition);
 			}
+		}
+		if (useHFOriginalCoast &&
+			(cell.IsUnderwater || HasUnderwaterNeighbor(cell)))
+		{
+			TriangulateHFOceanCell(cellIndex, cellPosition);
 		}
 		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 		{
@@ -190,9 +223,47 @@ public class HexGridChunk : MonoBehaviour
 			TriangulateConnection(direction, cell, cellIndex, center.y, e);
 		}
 
-		if (cell.IsUnderwater)
+		if (cell.IsUnderwater && !useHFOriginalCoast)
 		{
 			TriangulateWater(direction, cell, cellIndex, center);
+		}
+	}
+
+	bool HasUnderwaterNeighbor(HexCellData cell)
+	{
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			if (Grid.TryGetCellIndex(
+				cell.coordinates.Step(d), out int neighborIndex) &&
+				Grid.CellData[neighborIndex].IsUnderwater)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/// <summary>
+	/// HF intersects one continuous horizontal water plane with its baked
+	/// terrain height field. Tile the sea and its one-ring dry coast with full
+	/// hexes; the opaque HF relief surface naturally hides every part that is
+	/// still above water, leaving the Water_h shoreline instead of a straight
+	/// Catlike edge strip.
+	/// </summary>
+	void TriangulateHFOceanCell(int cellIndex, Vector3 center)
+	{
+		// Original HF uses a single datum for the terrain mesh and water plane.
+		// The height texture's 0.5 contour, rather than Catlike's -0.5 water
+		// offset, owns the shoreline.
+		center.y = HexMetrics.visualWaterLevel * HexMetrics.elevationStep;
+		Vector3 indices = new(cellIndex, cellIndex, cellIndex);
+		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+		{
+			water.AddTriangle(
+				center,
+				center + HexMetrics.GetFirstCorner(d),
+				center + HexMetrics.GetSecondCorner(d));
+			water.AddTriangleCellData(indices, weights1);
 		}
 	}
 

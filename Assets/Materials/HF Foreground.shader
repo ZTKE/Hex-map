@@ -36,7 +36,9 @@ Shader "Hex Map/HF Foreground"
 			// hardware sampler limit. The foreground vertex uses the same logical
 			// height reconstruction as the terrain surface beneath it.
 			SAMPLER(sampler_linear_clamp);
+			SAMPLER(sampler_point_clamp);
 			#define HF_TERRAIN_LINEAR_SAMPLER sampler_linear_clamp
+			#define HF_TERRAIN_POINT_SAMPLER sampler_point_clamp
 			#include "HexTerrainShape.hlsl"
 
 			TEXTURE2D(_MainTex);
