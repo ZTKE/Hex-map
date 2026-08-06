@@ -20,6 +20,14 @@ public class HexMesh : MonoBehaviour
 	Mesh hexMesh;
 	MeshCollider meshCollider;
 
+	struct VertexData
+	{
+		public Vector3 position;
+		public Vector3 indices;
+		public Color weights;
+		public Vector2 uv, uv2;
+	}
+
 	void Awake()
 	{
 		GetComponent<MeshFilter>().mesh = hexMesh = new Mesh();
@@ -58,6 +66,9 @@ public class HexMesh : MonoBehaviour
 	/// </summary>
 	public void Apply()
 	{
+		hexMesh.indexFormat = vertices.Count > 65535 ?
+			UnityEngine.Rendering.IndexFormat.UInt32 :
+			UnityEngine.Rendering.IndexFormat.UInt16;
 		hexMesh.SetVertices(vertices);
 		ListPool<Vector3>.Add(vertices);
 		if (useCellData)
@@ -83,6 +94,253 @@ public class HexMesh : MonoBehaviour
 		if (useCollider)
 		{
 			meshCollider.sharedMesh = hexMesh;
+		}
+	}
+
+	/// <summary>
+	/// Release generated Catlike geometry without uploading it. HF Original mode
+	/// still invokes the proven Catlike triangulation code to derive road, river,
+	/// and wall topology, but its hidden terrain mesh must not remain a second
+	/// surface or collider.
+	/// </summary>
+	public void Discard()
+	{
+		hexMesh.Clear();
+		ReleaseConstructionLists();
+	}
+
+	public void SetColliderEnabled(bool value)
+	{
+		if (!meshCollider)
+		{
+			return;
+		}
+		meshCollider.enabled = value;
+		if (!value)
+		{
+			meshCollider.sharedMesh = null;
+		}
+	}
+
+	/// <summary>
+	/// Subdivide an overlay and drape every resulting vertex over the shared HF
+	/// surface. Subdivision prevents a large road/river triangle from cutting
+	/// through curved authored relief between its original corner vertices.
+	/// </summary>
+	public void ConformToSurface(
+		HexGrid grid, int subdivisionLevels, float verticalOffset)
+	{
+		for (int i = 0; i < subdivisionLevels; i++)
+		{
+			SubdivideOnce();
+		}
+		for (int i = 0; i < vertices.Count; i++)
+		{
+			Vector3 position = vertices[i];
+			int rootCellIndex = GetDominantCellIndex(i);
+			position.y = rootCellIndex >= 0 ?
+				grid.SampleSurfaceHeight(rootCellIndex, position) + verticalOffset :
+				grid.SampleSurfaceHeight(position) + verticalOffset;
+			vertices[i] = position;
+		}
+	}
+
+	/// <summary>
+	/// Remove Catlike river ribbon triangles throughout HF's two-ring ocean
+	/// influence band. HF's shader-side river carve remains continuous there;
+	/// retaining a transparent ribbon under the equally broad ocean mesh reveals
+	/// its individual triangle topology through the water.
+	/// </summary>
+	public void CullHFOceanInfluencedTriangles(HexGrid grid)
+	{
+		if (!useCellData || triangles == null || triangles.Count == 0)
+		{
+			return;
+		}
+
+		List<int> keptTriangles = ListPool<int>.Get();
+		for (int i = 0; i < triangles.Count; i += 3)
+		{
+			Vector3 indices = cellIndices[triangles[i]];
+			if (IsInOceanInfluence(Mathf.RoundToInt(indices.x)) ||
+				IsInOceanInfluence(Mathf.RoundToInt(indices.y)) ||
+				IsInOceanInfluence(Mathf.RoundToInt(indices.z)))
+			{
+				continue;
+			}
+			keptTriangles.Add(triangles[i]);
+			keptTriangles.Add(triangles[i + 1]);
+			keptTriangles.Add(triangles[i + 2]);
+		}
+		ListPool<int>.Add(triangles);
+		triangles = keptTriangles;
+
+		bool IsInOceanInfluence(int cellIndex)
+		{
+			if (cellIndex < 0 || cellIndex >= grid.CellData.Length)
+			{
+				return false;
+			}
+			HexCellData cell = grid.CellData[cellIndex];
+			if (cell.IsUnderwater)
+			{
+				return true;
+			}
+			for (HexDirection firstDirection = HexDirection.NE;
+				firstDirection <= HexDirection.NW; firstDirection++)
+			{
+				if (!grid.TryGetCellIndex(
+					cell.coordinates.Step(firstDirection), out int firstIndex))
+				{
+					continue;
+				}
+				HexCellData first = grid.CellData[firstIndex];
+				if (first.IsUnderwater)
+				{
+					return true;
+				}
+				for (HexDirection secondDirection = HexDirection.NE;
+					secondDirection <= HexDirection.NW; secondDirection++)
+				{
+					if (grid.TryGetCellIndex(
+						first.coordinates.Step(secondDirection), out int secondIndex) &&
+						grid.CellData[secondIndex].IsUnderwater)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+	}
+
+	void SubdivideOnce()
+	{
+		if (triangles.Count == 0)
+		{
+			return;
+		}
+
+		List<Vector3> newVertices = ListPool<Vector3>.Get();
+		List<int> newTriangles = ListPool<int>.Get();
+		List<Vector3> newCellIndices = useCellData ?
+			ListPool<Vector3>.Get() : null;
+		List<Color> newCellWeights = useCellData ?
+			ListPool<Color>.Get() : null;
+		List<Vector2> newUVs = useUVCoordinates ?
+			ListPool<Vector2>.Get() : null;
+		List<Vector2> newUV2s = useUV2Coordinates ?
+			ListPool<Vector2>.Get() : null;
+
+		for (int i = 0; i < triangles.Count; i += 3)
+		{
+			VertexData a = GetVertexData(triangles[i]);
+			VertexData b = GetVertexData(triangles[i + 1]);
+			VertexData c = GetVertexData(triangles[i + 2]);
+			// A triangle's cell-index triplet is uniform. Interpolating those
+			// integer IDs would address unrelated logical cells in the shader.
+			b.indices = c.indices = a.indices;
+			VertexData ab = Lerp(a, b);
+			VertexData bc = Lerp(b, c);
+			VertexData ca = Lerp(c, a);
+			AddSubTriangle(a, ab, ca);
+			AddSubTriangle(ab, b, bc);
+			AddSubTriangle(ca, bc, c);
+			AddSubTriangle(ab, bc, ca);
+		}
+
+		ReleaseConstructionLists();
+		vertices = newVertices;
+		triangles = newTriangles;
+		cellIndices = newCellIndices;
+		cellWeights = newCellWeights;
+		uvs = newUVs;
+		uv2s = newUV2s;
+
+		void AddSubTriangle(VertexData a, VertexData b, VertexData c)
+		{
+			int first = newVertices.Count;
+			Add(a);
+			Add(b);
+			Add(c);
+			newTriangles.Add(first);
+			newTriangles.Add(first + 1);
+			newTriangles.Add(first + 2);
+		}
+
+		void Add(VertexData data)
+		{
+			newVertices.Add(data.position);
+			newCellIndices?.Add(data.indices);
+			newCellWeights?.Add(data.weights);
+			newUVs?.Add(data.uv);
+			newUV2s?.Add(data.uv2);
+		}
+	}
+
+	VertexData GetVertexData(int index) => new()
+	{
+		position = vertices[index],
+		indices = useCellData ? cellIndices[index] : Vector3.zero,
+		weights = useCellData ? cellWeights[index] : Color.black,
+		uv = useUVCoordinates ? uvs[index] : Vector2.zero,
+		uv2 = useUV2Coordinates ? uv2s[index] : Vector2.zero
+	};
+
+	static VertexData Lerp(VertexData a, VertexData b) => new()
+	{
+		position = Vector3.Lerp(a.position, b.position, 0.5f),
+		indices = a.indices,
+		weights = Color.Lerp(a.weights, b.weights, 0.5f),
+		uv = Vector2.Lerp(a.uv, b.uv, 0.5f),
+		uv2 = Vector2.Lerp(a.uv2, b.uv2, 0.5f)
+	};
+
+	int GetDominantCellIndex(int vertexIndex)
+	{
+		if (!useCellData || vertexIndex >= cellIndices.Count)
+		{
+			return -1;
+		}
+		Vector3 indices = cellIndices[vertexIndex];
+		Color weights = cellWeights[vertexIndex];
+		float index = weights.r >= weights.g ?
+			(weights.r >= weights.b ? indices.x : indices.z) :
+			(weights.g >= weights.b ? indices.y : indices.z);
+		return Mathf.RoundToInt(index);
+	}
+
+	void ReleaseConstructionLists()
+	{
+		if (vertices != null)
+		{
+			ListPool<Vector3>.Add(vertices);
+			vertices = null;
+		}
+		if (cellWeights != null)
+		{
+			ListPool<Color>.Add(cellWeights);
+			cellWeights = null;
+		}
+		if (cellIndices != null)
+		{
+			ListPool<Vector3>.Add(cellIndices);
+			cellIndices = null;
+		}
+		if (uvs != null)
+		{
+			ListPool<Vector2>.Add(uvs);
+			uvs = null;
+		}
+		if (uv2s != null)
+		{
+			ListPool<Vector2>.Add(uv2s);
+			uv2s = null;
+		}
+		if (triangles != null)
+		{
+			ListPool<int>.Add(triangles);
+			triangles = null;
 		}
 	}
 

@@ -5,6 +5,8 @@
 /// </summary>
 public class HexFeatureManager : MonoBehaviour
 {
+	public HexGrid Grid { get; set; }
+
 	[System.Serializable]
 	public struct HexFeatureCollection
 	{
@@ -98,8 +100,10 @@ public class HexFeatureManager : MonoBehaviour
 	/// <param name="roadCenter2">Center position of second road.</param>
 	public void AddBridge(Vector3 roadCenter1, Vector3 roadCenter2)
 	{
-		roadCenter1 = HexMetrics.Perturb(roadCenter1);
-		roadCenter2 = HexMetrics.Perturb(roadCenter2);
+		roadCenter1 = GroundPoint(
+			HexMetrics.Perturb(roadCenter1), false, 0.22f);
+		roadCenter2 = GroundPoint(
+			HexMetrics.Perturb(roadCenter2), false, 0.22f);
 		Transform instance = Instantiate(bridge);
 		instance.localPosition = (roadCenter1 + roadCenter2) * 0.5f;
 		instance.forward = roadCenter2 - roadCenter1;
@@ -161,9 +165,10 @@ public class HexFeatureManager : MonoBehaviour
 		}
 
 		Transform instance = Instantiate(prefab);
+		position = GroundPoint(HexMetrics.Perturb(position));
 		position.y += instance.localScale.y * 0.5f;
 		instance.SetLocalPositionAndRotation(
-			HexMetrics.Perturb(position),
+			position,
 			Quaternion.Euler(0f, 360f * hash.e, 0f));
 		instance.SetParent(container, false);
 	}
@@ -177,8 +182,9 @@ public class HexFeatureManager : MonoBehaviour
 	{
 		HexHash hash = HexMetrics.SampleHashGrid(position);
 		Transform instance = Instantiate(special[cell.SpecialIndex - 1]);
+		position = GroundPoint(HexMetrics.Perturb(position));
 		instance.SetLocalPositionAndRotation(
-			HexMetrics.Perturb(position),
+			position,
 			Quaternion.Euler(0f, 360f * hash.e, 0f));
 		instance.SetParent(container, false);
 	}
@@ -269,10 +275,10 @@ public class HexFeatureManager : MonoBehaviour
 		Vector3 nearLeft, Vector3 farLeft, Vector3 nearRight, Vector3 farRight,
 		bool addTower = false)
 	{
-		nearLeft = HexMetrics.Perturb(nearLeft);
-		farLeft = HexMetrics.Perturb(farLeft);
-		nearRight = HexMetrics.Perturb(nearRight);
-		farRight = HexMetrics.Perturb(farRight);
+		nearLeft = GroundPoint(HexMetrics.Perturb(nearLeft));
+		farLeft = GroundPoint(HexMetrics.Perturb(farLeft));
+		nearRight = GroundPoint(HexMetrics.Perturb(nearRight));
+		farRight = GroundPoint(HexMetrics.Perturb(farRight));
 
 		Vector3 left = HexMetrics.WallLerp(nearLeft, farLeft);
 		Vector3 right = HexMetrics.WallLerp(nearRight, farRight);
@@ -365,8 +371,8 @@ public class HexFeatureManager : MonoBehaviour
 
 	void AddWallCap(Vector3 near, Vector3 far)
 	{
-		near = HexMetrics.Perturb(near);
-		far = HexMetrics.Perturb(far);
+		near = GroundPoint(HexMetrics.Perturb(near));
+		far = GroundPoint(HexMetrics.Perturb(far));
 
 		Vector3 center = HexMetrics.WallLerp(near, far);
 		Vector3 thickness = HexMetrics.WallThicknessOffset(near, far);
@@ -381,9 +387,9 @@ public class HexFeatureManager : MonoBehaviour
 
 	void AddWallWedge(Vector3 near, Vector3 far, Vector3 point)
 	{
-		near = HexMetrics.Perturb(near);
-		far = HexMetrics.Perturb(far);
-		point = HexMetrics.Perturb(point);
+		near = GroundPoint(HexMetrics.Perturb(near));
+		far = GroundPoint(HexMetrics.Perturb(far));
+		point = GroundPoint(HexMetrics.Perturb(point));
 
 		Vector3 center = HexMetrics.WallLerp(near, far);
 		Vector3 thickness = HexMetrics.WallThicknessOffset(near, far);
@@ -399,5 +405,21 @@ public class HexFeatureManager : MonoBehaviour
 		walls.AddQuadUnperturbed(v1, point, v3, pointTop);
 		walls.AddQuadUnperturbed(point, v2, pointTop, v4);
 		walls.AddTriangleUnperturbed(pointTop, v3, v4);
+	}
+
+	Vector3 GroundPoint(
+		Vector3 position, bool carveRiver = true, float hfOffset = 0f)
+	{
+		if (!Grid)
+		{
+			return position;
+		}
+		position.y = Grid.SampleSurfaceHeight(position, carveRiver);
+		if (Grid.SurfaceSampler != null &&
+			Grid.SurfaceSampler.UsesHFOriginalSurface)
+		{
+			position.y += hfOffset;
+		}
+		return position;
 	}
 }

@@ -32,7 +32,7 @@ public class HexUnit : MonoBehaviour
 			locationCellIndex = value.Index;
 			value.Unit = this;
 			Grid.IncreaseVisibility(value, VisionRange);
-			transform.localPosition = value.Position;
+			transform.localPosition = SurfacePosition(value.Index);
 			Grid.MakeChildOfColumn(transform, value.Coordinates.ColumnIndex);
 		}
 	}
@@ -70,7 +70,7 @@ public class HexUnit : MonoBehaviour
 	/// Validate the position of the unit.
 	/// </summary>
 	public void ValidateLocation() =>
-		transform.localPosition = Grid.GetCell(locationCellIndex).Position;
+		transform.localPosition = SurfacePosition(locationCellIndex);
 
 	/// <summary>
 	/// Checl whether a cell is a valid destination for the unit.
@@ -100,8 +100,8 @@ public class HexUnit : MonoBehaviour
 
 	IEnumerator TravelPath()
 	{
-		Vector3 a, b, c = Grid.GetCell(pathToTravel[0]).Position;
-		yield return LookAt(Grid.GetCell(pathToTravel[1]).Position);
+		Vector3 a, b, c = SurfacePosition(pathToTravel[0]);
+		yield return LookAt(SurfacePosition(pathToTravel[1]));
 
 		if (currentTravelLocationCellIndex < 0)
 		{
@@ -118,7 +118,7 @@ public class HexUnit : MonoBehaviour
 			currentTravelLocation = Grid.GetCell(pathToTravel[i]);
 			currentTravelLocationCellIndex = currentTravelLocation.Index;
 			a = c;
-			b = Grid.GetCell(pathToTravel[i - 1]).Position;
+			b = SurfacePosition(pathToTravel[i - 1]);
 
 			int nextColumn = currentTravelLocation.Coordinates.ColumnIndex;
 			if (currentColumn != nextColumn)
@@ -137,12 +137,13 @@ public class HexUnit : MonoBehaviour
 				currentColumn = nextColumn;
 			}
 
-			c = (b + currentTravelLocation.Position) * 0.5f;
+			c = (b + SurfacePosition(currentTravelLocation.Index)) * 0.5f;
 			Grid.IncreaseVisibility(Grid.GetCell(pathToTravel[i]), VisionRange);
 
 			for (; t < 1f; t += Time.deltaTime * travelSpeed)
 			{
-				transform.localPosition = Bezier.GetPoint(a, b, c, t);
+				transform.localPosition = ConformTravelPoint(
+					Bezier.GetPoint(a, b, c, t));
 				Vector3 d = Bezier.GetDerivative(a, b, c, t);
 				d.y = 0f;
 				transform.localRotation = Quaternion.LookRotation(d);
@@ -155,19 +156,20 @@ public class HexUnit : MonoBehaviour
 
 		HexCell location = Grid.GetCell(locationCellIndex);
 		a = c;
-		b = location.Position;
+		b = SurfacePosition(location.Index);
 		c = b;
 		Grid.IncreaseVisibility(location, VisionRange);
 		for (; t < 1f; t += Time.deltaTime * travelSpeed)
 		{
-			transform.localPosition = Bezier.GetPoint(a, b, c, t);
+			transform.localPosition = ConformTravelPoint(
+				Bezier.GetPoint(a, b, c, t));
 			Vector3 d = Bezier.GetDerivative(a, b, c, t);
 			d.y = 0f;
 			transform.localRotation = Quaternion.LookRotation(d);
 			yield return null;
 		}
 
-		transform.localPosition = location.Position;
+		transform.localPosition = SurfacePosition(location.Index);
 		orientation = transform.localRotation.eulerAngles.y;
 		ListPool<int>.Add(pathToTravel);
 		pathToTravel = null;
@@ -208,6 +210,23 @@ public class HexUnit : MonoBehaviour
 
 		transform.LookAt(point);
 		orientation = transform.localRotation.eulerAngles.y;
+	}
+
+	Vector3 SurfacePosition(int cellIndex)
+	{
+		float offset = Grid.SurfaceSampler != null &&
+			Grid.SurfaceSampler.UsesHFOriginalSurface ? 0.08f : 0f;
+		return Grid.GetSurfacePosition(cellIndex, offset);
+	}
+
+	Vector3 ConformTravelPoint(Vector3 position)
+	{
+		if (Grid.SurfaceSampler != null &&
+			Grid.SurfaceSampler.UsesHFOriginalSurface)
+		{
+			position.y = Grid.SampleSurfaceHeight(position) + 0.08f;
+		}
+		return position;
 	}
 
 	/// <summary>
@@ -293,7 +312,7 @@ public class HexUnit : MonoBehaviour
 		if (locationCellIndex >= 0)
 		{
 			HexCell location = Grid.GetCell(locationCellIndex);
-			transform.localPosition = location.Position;
+			transform.localPosition = SurfacePosition(location.Index);
 			if (currentTravelLocationCellIndex >= 0)
 			{
 				HexCell currentTravelLocation =

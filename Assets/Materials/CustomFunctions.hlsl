@@ -244,8 +244,16 @@ void GetFragmentDataWater_float(
 		// when the camera moves and prevents low-LOD sand triangles from occluding
 		// the water plane.
 		float coverageWidth = max(fwidth(signedWaterDepth) * 1.5, 0.015);
-		waterCoverage = smoothstep(
+		float heightCoverage = smoothstep(
 			-coverageWidth, coverageWidth, signedWaterDepth);
+		// Height alone is insufficient: the Plains height texture contains local
+		// depressions below the shared datum. Near any ocean mesh those otherwise
+		// dry dents were rendered as water until the mesh's straight hex boundary.
+		// Require continuous ownership by HF's Sea triplet as well, and let the
+		// second coast ring provide enough geometry for this mask to taper to zero.
+		float seaCoverage = smoothstep(
+			0.025, 0.18, saturate(coastSurface.seaInfluence));
+		waterCoverage = heightCoverage * seaCoverage;
 		float waterDepth = max(signedWaterDepth, 0.0);
 		// The old ShoreUV covered only a narrow edge strip. HF's beach slope is
 		// much wider, so remap world-space depth to an equally narrow contour or

@@ -12,6 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b8f7a095a9c4a1fb083b0a9a6e55401, type: 3}
   m_Name: Default Hex Terrain Style
   m_EditorClassIdentifier: 
+  surfaceMode: 1
+  hfColliderSubdivisions: 4
+  hfOverlaySubdivisionLevels: 1
+  hfRiverSurfaceOffset: 0.12
   hillHeight: 2.9
   mountainHeight: 5.45
   mountainWidth: 0.93
@@ -31,6 +35,7 @@ MonoBehaviour:
   hfOriginalStampScale: 1.6
   hfOriginalHeightScale: 16
   hfOriginalHeightLod: 2
+  hfRiverCarve: {x: 0.07, y: 0.31}
   hfDirtDiffuse: {fileID: 2800000, guid: 137cb0679adafb344a419db9246b6a1a, type: 3}
   hfDirtHeight: {fileID: 2800000, guid: e906119e70c4f61409d0ef08b1be048b, type: 3}
   hfDirtMixer: {fileID: 2800000, guid: 5355ced6bddd47f4ab466b6ad891c4ae, type: 3}

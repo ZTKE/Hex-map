@@ -3,6 +3,17 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
+/// Selects the single authority for the rendered and interactive map surface.
+/// Legacy Catlike remains available for old scenes and debugging, while new
+/// maps use the original HoneyFramework stamp reconstruction end to end.
+/// </summary>
+public enum HexSurfaceMode
+{
+	LegacyCatlike = 0,
+	HFOriginal = 1
+}
+
+/// <summary>
 /// Data-driven visual style for the hex terrain.
 ///
 /// The layout mirrors an ArtDef-style terrain pipeline: biome materials are
@@ -85,6 +96,14 @@ public sealed class HexTerrainStyle : ScriptableObject
 	const int bakedMaskSize = 65;
 	const int biomeCount = 5;
 
+	[Header("Surface authority")]
+	[Tooltip("HF Original drives rendering, collision, roads, rivers, and object placement. Legacy Catlike is retained only as an explicit compatibility path.")]
+	public HexSurfaceMode surfaceMode = HexSurfaceMode.LegacyCatlike;
+	[Range(2, 8)] public int hfColliderSubdivisions = 4;
+	[Range(0, 2)] public int hfOverlaySubdivisionLevels = 1;
+	[Tooltip("River overlay height above the HF-carved channel surface.")]
+	[Range(0f, 0.5f)] public float hfRiverSurfaceOffset = 0.12f;
+
 	[Header("Terrain element scale")]
 	[Min(0.1f)] public float hillHeight = 2.9f;
 	[Min(0.1f)] public float mountainHeight = 5.45f;
@@ -115,12 +134,14 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[Range(0f, 1f)] public float hfRiverMixerStrength = 0.82f;
 
 	[Header("HoneyFramework original terrain triplets")]
-	[Tooltip("Use HF's original diffuse, height, and mixer stamps while retaining the logical map data path.")]
+	[Tooltip("Legacy transition control. Explicit HF Original surface mode forces the complete triplet reconstruction (1.0).")]
 	[Range(0f, 1f)] public float hfOriginalTerrainBlend = 1f;
 	[Min(0.4f)] public float hfOriginalStampScale = 1.6f;
 	[Min(0.1f)] public float hfOriginalHeightScale = 16f;
 	[Tooltip("Mip level matching HF Oven's downsample plus Gaussian height blur.")]
-	[Range(0f, 4f)] public float hfOriginalHeightLod = 2f;
+	[Range(0, 4)] public int hfOriginalHeightLod = 2;
+	[Tooltip("Inner and outer distances of the HF river-channel carve, in normalized hex units.")]
+	public Vector2 hfRiverCarve = new(0.07f, 0.31f);
 	public Texture2D hfDirtDiffuse;
 	public Texture2D hfDirtHeight;
 	public Texture2D hfDirtMixer;
@@ -191,6 +212,8 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[NonSerialized] readonly Dictionary<int, float[]> bakedMasks = new();
 	[NonSerialized] readonly HashSet<Texture2D> unreadableMasks = new();
 	[NonSerialized] Texture2DArray mountainMaskArray;
+	[NonSerialized] bool reportedIncompleteHFSet;
+	[NonSerialized] int runtimeRevision;
 
 	static HexTerrainStyle runtimeDefault;
 
@@ -203,7 +226,8 @@ public sealed class HexTerrainStyle : ScriptableObject
 		HexTerrainStyle[] styles = Resources.FindObjectsOfTypeAll<HexTerrainStyle>();
 		for (int i = 0; i < styles.Length; i++)
 		{
-			if (styles[i] && styles[i].HasHFOriginalTerrainSet())
+			if (styles[i] && styles[i].UsesHFOriginalSurface &&
+				styles[i].HasHFOriginalTerrainSet())
 			{
 				styles[i].ApplyGlobalMaterialSet();
 				return;
@@ -233,11 +257,20 @@ public sealed class HexTerrainStyle : ScriptableObject
 		terrainTypeIndex == 0 ? desertMountainWidth : mountainWidth;
 
 	/// <summary>
-	/// Whether the complete HF surface, including its sea-height stamps, owns
-	/// the land / ocean intersection instead of Catlike's straight edge strip.
+	/// Whether HF owns the complete visible and interactive surface. This does
+	/// not silently fall back when an asset is missing: callers keep the HF
+	/// branch active and validation reports the incomplete style loudly.
 	/// </summary>
-	public bool UsesHFOriginalCoast =>
-		hfOriginalTerrainBlend > 0.999f && HasHFOriginalTerrainSet();
+	public bool UsesHFOriginalSurface =>
+		surfaceMode == HexSurfaceMode.HFOriginal;
+
+	public int RuntimeRevision => runtimeRevision;
+
+	/// <summary>
+	/// Compatibility name for the existing coast call sites. In the unified
+	/// surface pipeline coast ownership cannot differ from terrain ownership.
+	/// </summary>
+	public bool UsesHFOriginalCoast => UsesHFOriginalSurface;
 
 	public int SelectMountainModule(int neighborMask, HexHash hash)
 	{
@@ -382,6 +415,8 @@ public sealed class HexTerrainStyle : ScriptableObject
 			hillHeight, mountainHeight, desertMountainHeight, 0f));
 		material.SetVector("_HexReliefWidths", new Vector4(
 			mountainWidth, desertMountainWidth, 0f, 0f));
+		material.SetVector("_HexReliefRiverCarve", new Vector4(
+			hfRiverCarve.x, hfRiverCarve.y, 0f, 0f));
 		material.SetTexture("_HexMountainMasks", GetMountainMaskArray());
 
 		EnsureBiomeStyles();
@@ -413,6 +448,17 @@ public sealed class HexTerrainStyle : ScriptableObject
 
 	void ApplyGlobalMaterialSet()
 	{
+		bool hasHFOriginalTerrainSet = HasHFOriginalTerrainSet();
+		if (UsesHFOriginalSurface && !hasHFOriginalTerrainSet &&
+			!reportedIncompleteHFSet)
+		{
+			reportedIncompleteHFSet = true;
+			Debug.LogError(
+				$"Terrain style '{name}' selects HF Original surface mode, but " +
+				"one or more required diffuse/height/mixer textures are missing. " +
+				"The legacy Catlike surface will not be enabled automatically.",
+				this);
+		}
 		EnsurePlantTints();
 		if (terrainSurfaceAtlas)
 		{
@@ -451,10 +497,13 @@ public sealed class HexTerrainStyle : ScriptableObject
 		SetGlobalTexture("_HFRiverHeight", hfRiverHeight);
 		SetGlobalTexture("_HFRiverMixer", hfRiverOriginalMixer);
 		Shader.SetGlobalFloat("_HexHFOriginalBlend",
-			HasHFOriginalTerrainSet() ? hfOriginalTerrainBlend : 0f);
+			UsesHFOriginalSurface && hasHFOriginalTerrainSet ?
+				1f : 0f);
 		Shader.SetGlobalFloat("_HexHFOriginalStampScale", hfOriginalStampScale);
 		Shader.SetGlobalFloat("_HexHFOriginalHeightScale", hfOriginalHeightScale);
 		Shader.SetGlobalFloat("_HexHFOriginalHeightLod", hfOriginalHeightLod);
+		Shader.SetGlobalVector("_HexReliefRiverCarve", new Vector4(
+			hfRiverCarve.x, hfRiverCarve.y, 0f, 0f));
 		// Original HF places both the terrain mesh and the water plane on one
 		// datum, then lets the centered height texture decide which side of the
 		// water line is visible. Catlike's separate shallow/deep base elevations
@@ -507,7 +556,7 @@ public sealed class HexTerrainStyle : ScriptableObject
 		}
 	}
 
-	bool HasHFOriginalTerrainSet() =>
+	public bool HasHFOriginalTerrainSet() =>
 		hfDirtDiffuse && hfDirtHeight && hfDirtMixer &&
 		hfPlainsDiffuse && hfCommonHeight && hfPlainsMixer &&
 		hfMarshDiffuse && hfMarshMixer &&
@@ -587,6 +636,8 @@ public sealed class HexTerrainStyle : ScriptableObject
 
 	void OnValidate()
 	{
+		runtimeRevision++;
+		reportedIncompleteHFSet = false;
 		bakedMasks.Clear();
 		unreadableMasks.Clear();
 		if (mountainMaskArray)

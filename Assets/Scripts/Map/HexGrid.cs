@@ -84,6 +84,14 @@ public class HexGrid : MonoBehaviour
 	/// </summary>
 	public HexCellShaderData ShaderData => cellShaderData;
 
+	/// <summary>
+	/// Shared CPU view of the shader-displaced HF surface. It is configured by
+	/// the chunk style and is the sole height source for physics and objects in
+	/// HF Original mode.
+	/// </summary>
+	public HexSurfaceSampler SurfaceSampler =>
+		surfaceSampler ??= new HexSurfaceSampler(this);
+
 	int chunkCountX, chunkCountZ;
 
 	HexCellPriorityQueue searchFrontier;
@@ -100,6 +108,7 @@ public class HexGrid : MonoBehaviour
 #pragma warning restore IDE0044 // Add readonly modifier
 
 	HexCellShaderData cellShaderData;
+	HexSurfaceSampler surfaceSampler;
 
 	void Awake()
 	{
@@ -108,6 +117,7 @@ public class HexGrid : MonoBehaviour
 		HexMetrics.noiseSource = noiseSource;
 		HexMetrics.InitializeHashGrid(seed);
 		HexUnit.unitPrefab = unitPrefab;
+		surfaceSampler = new HexSurfaceSampler(this);
 		cellShaderData = gameObject.AddComponent<HexCellShaderData>();
 		cellShaderData.Grid = this;
 		CreateMap(CellCountX, CellCountZ, Wrapping);
@@ -411,6 +421,45 @@ public class HexGrid : MonoBehaviour
 	{
 		cellGridChunks[cellIndex].Refresh();
 		cellShaderData.RefreshTerrainShapeWithDependents(cellIndex);
+	}
+
+	/// <summary>
+	/// Bind the map's visual surface style. All chunks in a grid are expected to
+	/// share this style; repeated calls are cheap and keep prefab ownership local.
+	/// </summary>
+	public void ConfigureSurface(HexTerrainStyle style) =>
+		SurfaceSampler.Configure(style);
+
+	public float SampleSurfaceHeight(
+		Vector3 localPosition, bool carveRiver = true) =>
+		SurfaceSampler.SampleHeight(localPosition, carveRiver);
+
+	public float SampleSurfaceHeight(
+		int rootCellIndex, Vector3 localPosition, bool carveRiver = true) =>
+		SurfaceSampler.SampleHeight(rootCellIndex, localPosition, carveRiver);
+
+	public Vector3 GetSurfacePosition(int cellIndex, float offset = 0f)
+	{
+		Vector3 position = CellPositions[cellIndex];
+		position.y = SampleSurfaceHeight(cellIndex, position) + offset;
+		return position;
+	}
+
+	/// <summary>
+	/// Keep the optional hex edit overlay on the same center height as the HF
+	/// surface. CellPositions remains logical Catlike data for generation and
+	/// pathfinding; only this visual RectTransform is moved.
+	/// </summary>
+	public void RefreshCellUISurfacePosition(int cellIndex)
+	{
+		RectTransform rectTransform = cellUIRects[cellIndex];
+		if (!rectTransform)
+		{
+			return;
+		}
+		Vector3 uiPosition = rectTransform.localPosition;
+		uiPosition.z = -GetSurfacePosition(cellIndex).y;
+		rectTransform.localPosition = uiPosition;
 	}
 
 	/// <summary>

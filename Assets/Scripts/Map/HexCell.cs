@@ -35,9 +35,11 @@ public struct HexCell
 	public readonly int Index => index;
 
 	/// <summary>
-	/// Local position of this cell.
+	/// Visible surface position of the cell center. The grid keeps its logical
+	/// Catlike base position internally, while public placement follows the
+	/// active HF surface authority.
 	/// </summary>
-	public readonly Vector3 Position => grid.CellPositions[index];
+	public readonly Vector3 Position => grid.GetSurfacePosition(index);
 
 	/// <summary>
 	/// Set the elevation level.
