@@ -16,6 +16,14 @@ public class NewMapMenu : MonoBehaviour
 
 	bool wrapping = true;
 
+	void Update()
+	{
+		if (Input.GetKeyDown(KeyCode.Escape))
+		{
+			Close();
+		}
+	}
+
 	public void ToggleMapGeneration(bool toggle) => generateMaps = toggle;
 
 	public void ToggleWrapping(bool toggle) => wrapping = toggle;

@@ -1,4 +1,32 @@
 ﻿/// <summary>
+/// HF foreground vegetation set. Species are independent from the ground
+/// material so painting a forest never changes the selected terrain.
+/// </summary>
+public enum HexVegetation : byte
+{
+	Mixed,
+	Broadleaf,
+	Sapling,
+	Conifer,
+	Deadwood,
+	ColdMixed
+}
+
+/// <summary>
+/// Colour themes derived from HF's per-terrain foreground colour. They tint the
+/// selected sprite composition without changing its species or density.
+/// </summary>
+public enum HexVegetationTint : byte
+{
+	Natural,
+	DeepGreen,
+	Autumn,
+	Dry,
+	Frost,
+	Pale
+}
+
+/// <summary>
 /// Container struct for bundled hex cell data.
 /// </summary>
 [System.Serializable]
@@ -23,6 +51,21 @@ public struct HexCellData
 	/// Local visual relief, independent from simulation elevation.
 	/// </summary>
 	public HexLandform landform;
+
+	/// <summary>
+	/// HF foreground species and exact visual density. PlantLevel remains the
+	/// compact Catlike gameplay-cost tier; these fields own presentation.
+	/// </summary>
+	public HexVegetation vegetation;
+
+	public byte vegetationDensity;
+
+	public HexVegetationTint vegetationTint;
+
+	/// <summary>
+	/// Rotation of the authored HF terrain stamp in 60-degree steps.
+	/// </summary>
+	public byte terrainRotation;
 
 	/// <summary>
 	/// Visual-only underwater tier: 0 dry, 1 coastal/shallow, 2 offshore/deep.
@@ -70,6 +113,16 @@ public struct HexCellData
 	/// Plant feature level.
 	/// </summary>
 	public readonly int PlantLevel => values.PlantLevel;
+
+	/// <summary>
+	/// Exact HF vegetation density from 0 through 100. The fallback keeps maps
+	/// already in memory during a hot reload visually compatible.
+	/// </summary>
+	public readonly int VegetationDensity =>
+		vegetationDensity == 0 && PlantLevel > 0 ?
+			PlantLevel == 3 ? 100 : PlantLevel * 33 : vegetationDensity;
+
+	public readonly int TerrainRotation => terrainRotation % 6;
 
 	/// <summary>
 	/// Special feature index.

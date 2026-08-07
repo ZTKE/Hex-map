@@ -147,11 +147,12 @@ public partial class HexGridChunk : MonoBehaviour
 			terrain.SetColliderEnabled(false);
 			terrain.Discard();
 			roads.ConformToSurface(
-				Grid, activeStyle.hfOverlaySubdivisionLevels, 0f);
-			rivers.CullHFOceanInfluencedTriangles(Grid);
-			rivers.ConformToSurface(
 				Grid, activeStyle.hfOverlaySubdivisionLevels,
-				activeStyle.hfRiverSurfaceOffset);
+				activeStyle.hfRoadSurfaceOffset);
+			// HF Relief now cuts and colours the complete river analytically from
+			// logical edge flags. Discard Catlike's ribbon so it cannot intersect the
+			// tessellated channel or expose its straight triangle topology.
+			rivers.Discard();
 			surfaceCollider.Build(
 				Grid, cellIndices, activeStyle.hfColliderSubdivisions);
 		}
@@ -163,7 +164,10 @@ public partial class HexGridChunk : MonoBehaviour
 			terrain.SetColliderEnabled(true);
 			terrain.Apply();
 		}
-		rivers.Apply();
+		if (!useHFOriginalSurface)
+		{
+			rivers.Apply();
+		}
 		roads.Apply();
 		water.Apply();
 		if (useHFOriginalSurface)

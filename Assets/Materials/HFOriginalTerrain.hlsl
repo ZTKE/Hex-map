@@ -55,6 +55,9 @@ float HFOriginalPanelFor(float terrain, float landform)
 	if (terrain < 0.5) return HF_ORIGINAL_DIRT;
 	if (terrain < 1.5) return HF_ORIGINAL_PLAINS;
 	if (terrain < 2.5) return HF_ORIGINAL_MARSH;
+	// HF ships only three flat height/mixer/diffuse triplets. Tundra and Snow
+	// reuse the closest structural panels here; Hex Relief.shader applies their
+	// distinct logical biome materials after reconstructing the HF surface.
 	if (terrain < 3.5) return HF_ORIGINAL_DIRT;
 	return HF_ORIGINAL_PLAINS;
 }
@@ -66,13 +69,9 @@ float HFOriginalPanelForCell(
 	{
 		return HF_ORIGINAL_SEA;
 	}
-	// HF's forest terrain definitions (OID 5 and OID 9) both use the
-	// Plains1 triplet; foreground density is a terrain-definition choice, not a
-	// recolour layered over Dirt or Marsh.
-	if (landform < 0.5 && plantLevel > 0.5)
-	{
-		return HF_ORIGINAL_PLAINS;
-	}
+	// Vegetation is a true foreground layer. Keep plantLevel in the signature
+	// for the compact cell-data layout, but never let it replace the selected
+	// ground panel (the old behavior turned every forest into Plains).
 	return HFOriginalPanelFor(terrain, landform);
 }
 

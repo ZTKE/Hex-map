@@ -161,12 +161,19 @@ void GetFragmentDataRoad_float(
 {
 	float4 noise = NoiseTexture.Sample(
 		NoiseTexture.samplerstate, WorldPosition.xz * (3 * TILING_SCALE));
-	float3 roadColor = Color.rgb * (noise.y * 0.75 + 0.25);
+	// Keep the road body readable. Noise belongs at the shoulder; applying the
+	// old 0.25..1 multiplier to the center turned long roads into dark blotches.
+	float3 roadColor = Color.rgb * (noise.y * 0.28 + 0.72);
 	BaseColor = HexCivGrade(
 		roadColor, WorldPosition, 0.58, 0.72) * Visibility.x;
-	Alpha = BlendUV.x;
-	Alpha *= noise.x + 0.5;
-	Alpha = smoothstep(0.4, 0.7, Alpha);
+
+	// BlendUV.x is zero at the shoulder and one on the center line. Preserve a
+	// fully continuous core and use noise only to roughen the outer edge.
+	float coverage = saturate(BlendUV.x);
+	float edgeJitter = (noise.x - 0.5) * 0.18;
+	float shoulderAlpha = smoothstep(0.18, 0.56, coverage + edgeJitter);
+	float coreAlpha = smoothstep(0.48, 0.78, coverage);
+	Alpha = max(shoulderAlpha, coreAlpha);
 	Exploration = Visibility.y;
 }
 
@@ -217,9 +224,9 @@ void GetFragmentDataWater_float(
 	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
 	float shore = 0.0;
 	float waterCoverage = 1.0;
+	HexGridData grid = GetHexGridData(WorldPosition.xz);
 	if (_HexHFOriginalBlend > 0.999)
 	{
-		HexGridData grid = GetHexGridData(WorldPosition.xz);
 		float2 hexPosition = WoldToHexSpace(WorldPosition.xz);
 		float2 local = hexPosition - grid.cellCenter;
 		// Seamless wrapping moves complete chunk columns by exactly one map
@@ -268,6 +275,7 @@ void GetFragmentDataWater_float(
 		water + _HexShoreFoamColor.rgb * waves * 0.12,
 		coast, saturate(_HexHFOriginalBlend)));
 	c = HexCivGrade(c, WorldPosition, 0.66 + waves * 0.2, 0.48);
+	c = ApplyHFEditorOverlay(c, grid);
 
 	BaseColor = c * Visibility.x;
 	float coastAlpha = lerp(0.82, 0.68, smoothstep(0.38, 0.94, shore));

@@ -8,6 +8,12 @@ using System.Collections.Generic;
 /// </summary>
 public class HexGrid : MonoBehaviour
 {
+	/// <summary>
+	/// Raised after a new map has been created or a saved map has finished
+	/// loading. Editor-only transient state must not cross this boundary.
+	/// </summary>
+	public event System.Action MapReset;
+
 	[SerializeField]
 	Text cellLabelPrefab;
 
@@ -195,6 +201,7 @@ public class HexGrid : MonoBehaviour
 		cellShaderData.Initialize(CellCountX, CellCountZ);
 		CreateChunks();
 		CreateCells();
+		MapReset?.Invoke();
 		return true;
 	}
 
@@ -387,6 +394,8 @@ public class HexGrid : MonoBehaviour
 		var cell = new HexCell(i, this);
 		CellPositions[i] = position;
 		CellData[i].coordinates = HexCoordinates.FromOffsetCoordinates(x, z);
+		CellData[i].terrainRotation = (byte)Mathf.Clamp(
+			Mathf.FloorToInt(HexMetrics.SampleHashGrid(position).a * 6f), 0, 5);
 
 		bool explorable = Wrapping ?
 			z > 0 && z < CellCountZ - 1 :
@@ -584,6 +593,17 @@ public class HexGrid : MonoBehaviour
 	}
 
 	/// <summary>
+	/// Rebuild every visual chunk after restoring an editor history snapshot.
+	/// </summary>
+	public void RefreshAllChunks()
+	{
+		for (int i = 0; i < chunks.Length; i++)
+		{
+			chunks[i].Refresh();
+		}
+	}
+
+	/// <summary>
 	/// Save the map.
 	/// </summary>
 	/// <param name="writer"><see cref="BinaryWriter"/> to use.</param>
@@ -599,6 +619,10 @@ public class HexGrid : MonoBehaviour
 			data.values.Save(writer);
 			data.flags.Save(writer);
 			writer.Write((byte)data.landform);
+			writer.Write((byte)data.vegetation);
+			writer.Write((byte)Mathf.Clamp(data.VegetationDensity, 0, 100));
+			writer.Write((byte)data.vegetationTint);
+			writer.Write((byte)data.TerrainRotation);
 		}
 
 		writer.Write(units.Count);
@@ -642,6 +666,40 @@ public class HexGrid : MonoBehaviour
 			data.flags = data.flags.Load(reader, header);
 			data.landform = header >= 6 ?
 				(HexLandform)reader.ReadByte() : HexLandform.Flat;
+			if (header >= 7)
+			{
+				data.vegetation = (HexVegetation)Mathf.Clamp(
+					reader.ReadByte(), 0, (int)HexVegetation.ColdMixed);
+				data.vegetationDensity = (byte)Mathf.Clamp(
+					reader.ReadByte(), 0, 100);
+			}
+			else
+			{
+				// Version 6 inferred species from terrain and stored only a 0-3
+				// density tier. Migrate it once into the independent HF fields.
+				data.vegetation = data.TerrainTypeIndex switch
+				{
+					4 => HexVegetation.ColdMixed,
+					3 => HexVegetation.Deadwood,
+					_ => HexVegetation.Mixed
+				};
+				data.vegetationDensity = (byte)(data.PlantLevel == 3 ?
+					100 : data.PlantLevel * 33);
+			}
+			if (header >= 8)
+			{
+				data.vegetationTint = (HexVegetationTint)Mathf.Clamp(
+					reader.ReadByte(), 0, (int)HexVegetationTint.Pale);
+				data.terrainRotation = (byte)Mathf.Clamp(
+					reader.ReadByte(), 0, 5);
+			}
+			else
+			{
+				data.vegetationTint = HexVegetationTint.Natural;
+				data.terrainRotation = (byte)Mathf.Clamp(
+					Mathf.FloorToInt(
+						HexMetrics.SampleHashGrid(CellPositions[i]).a * 6f), 0, 5);
+			}
 			CellData[i] = data;
 		}
 		RefreshAllCells();
@@ -660,6 +718,7 @@ public class HexGrid : MonoBehaviour
 		}
 
 		cellShaderData.ImmediateMode = originalImmediateMode;
+		MapReset?.Invoke();
 	}
 
 	/// <summary>

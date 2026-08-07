@@ -9,7 +9,7 @@ using System.IO;
 /// </summary>
 public class SaveLoadMenu : MonoBehaviour
 {
-	const int mapFileVersion = 6;
+	const int mapFileVersion = 8;
 
 	[SerializeField]
 	Text menuLabel, actionButtonLabel;
@@ -27,6 +27,14 @@ public class SaveLoadMenu : MonoBehaviour
 	HexGrid hexGrid;
 
 	bool saveMode;
+
+	void Update()
+	{
+		if (Input.GetKeyDown(KeyCode.Escape))
+		{
+			Close();
+		}
+	}
 
 	public void Open(bool saveMode)
 	{

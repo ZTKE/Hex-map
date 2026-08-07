@@ -378,8 +378,13 @@ public sealed class HexSurfaceSampler
 
 	float PackedHFAngle(int cellIndex)
 	{
-		float hash = HexMetrics.SampleHashGrid(grid.CellPositions[cellIndex]).a;
-		int packed = Mathf.Clamp(Mathf.RoundToInt(hash * 63f), 0, 63);
+		// Reproduce the shader-data pack/decode exactly. The six authored
+		// rotations cannot all be represented exactly by the 6-bit angle, so
+		// using an ideal angle here would make CPU placement drift slightly from
+		// the terrain rendered by the GPU.
+		float angle01 = Mathf.Repeat(
+			grid.CellData[cellIndex].TerrainRotation / 6f + 0.5f, 1f);
+		int packed = Mathf.Clamp(Mathf.RoundToInt(angle01 * 63f), 0, 63);
 		return packed / 63f * (Mathf.PI * 2f) - Mathf.PI;
 	}
 
@@ -397,10 +402,11 @@ public sealed class HexSurfaceSampler
 		{
 			return 3;
 		}
-		if (cell.PlantLevel > 0)
-		{
-			return 1;
-		}
+		// Vegetation is an independent foreground layer. It must never replace
+		// the authored ground panel (the old coupling made every forest Plains).
+		// HF authored only three flat height/mixer panels. Terrain IDs 3 and 4
+		// reuse the nearest structural panels for CPU placement, while the shader
+		// overlays their independent Tundra and Snow logical surface materials.
 		return cell.TerrainTypeIndex switch
 		{
 			0 => 0,

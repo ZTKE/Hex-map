@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -74,64 +74,87 @@ public sealed class HexHFForegroundMesh : MonoBehaviour
 
 	/// <summary>
 	/// Adds the HF foreground definition matching this project's logical cell.
-	/// Plant levels select progressively denser variants of HF's forest set.
-	/// Mountain and dirt decorations follow the original terrain XML directly.
+	/// Species and exact density are independent from ground material and relief.
 	/// </summary>
 	public void AddCell(HexCellData cell, int cellIndex, Vector3 center)
 	{
+		int density = Mathf.Clamp(cell.VegetationDensity, 0, 100);
+		if (density <= 0)
+		{
+			return;
+		}
+
 		uint randomState = unchecked((uint)(
 			cellIndex * 747796405 +
 			cell.coordinates.X * 2891336453L +
-			cell.coordinates.Z * 1181783497L));
+			cell.coordinates.Z * 1181783497L +
+			(int)cell.vegetation * 2246822519L));
 
-		if (cell.landform == HexLandform.Mountain)
+		switch (cell.vegetation)
 		{
-			Color tint = HexColor(0x71, 0x79, 0x2f);
-			AddGroup(SpriteKind.Tree07, 7, tint, cellIndex, center, ref randomState);
-			AddGroup(SpriteKind.Tree14, 17, tint, cellIndex, center, ref randomState);
-			return;
+			case HexVegetation.Broadleaf:
+				AddGroup(SpriteKind.Tree14, ScaleForestCount(68, density),
+					ApplyVegetationTint(HexColor(0x76, 0x83, 0x36), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				break;
+			case HexVegetation.Sapling:
+				AddGroup(SpriteKind.Tree04, ScaleForestCount(82, density),
+					ApplyVegetationTint(HexColor(0x79, 0x86, 0x38), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				break;
+			case HexVegetation.Conifer:
+				AddGroup(SpriteKind.Tree07, ScaleForestCount(72, density),
+					ApplyVegetationTint(HexColor(0x4f, 0x70, 0x38), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				break;
+			case HexVegetation.Deadwood:
+				AddGroup(SpriteKind.DeadTree02, ScaleForestCount(38, density),
+					ApplyVegetationTint(HexColor(0x78, 0x6b, 0x4d), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				AddGroup(SpriteKind.DeadTree07, ScaleForestCount(34, density),
+					ApplyVegetationTint(HexColor(0x6d, 0x62, 0x49), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				break;
+			case HexVegetation.ColdMixed:
+				AddGroup(SpriteKind.Tree07, ScaleForestCount(34, density),
+					ApplyVegetationTint(HexColor(0x3d, 0x5c, 0x3e), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				AddGroup(SpriteKind.DeadTree02, ScaleForestCount(36, density),
+					ApplyVegetationTint(HexColor(0x68, 0x70, 0x5a), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				break;
+			default:
+				AddGroup(SpriteKind.Tree14, ScaleForestCount(15, density),
+					ApplyVegetationTint(HexColor(0x71, 0x79, 0x2f), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				AddGroup(SpriteKind.Tree04, ScaleForestCount(30, density),
+					ApplyVegetationTint(HexColor(0x71, 0x79, 0x2f), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				AddGroup(SpriteKind.Tree07, ScaleForestCount(40, density),
+					ApplyVegetationTint(HexColor(0x65, 0x78, 0x35), cell.vegetationTint),
+					cellIndex, center, ref randomState);
+				break;
 		}
+	}
 
-		// Hill3_d has no foreground definitions in the HF terrain XML.
-		if (cell.landform == HexLandform.Hill)
-		{
-			return;
-		}
+	static int ScaleForestCount(int denseCount, int density) =>
+		Mathf.Max(1, Mathf.RoundToInt(denseCount * density / 100f));
 
-		if (cell.PlantLevel > 0)
+	static Color ApplyVegetationTint(Color color, HexVegetationTint tint)
+	{
+		Color multiplier = tint switch
 		{
-			if (cell.TerrainTypeIndex == 3)
-			{
-				// HF terrain OID 9: the cold mixed living/dead forest set.
-				Color tint = HexColor(0x3d, 0x5c, 0x3e);
-				AddGroup(SpriteKind.Tree07, 25,
-					tint, cellIndex, center, ref randomState);
-				AddGroup(SpriteKind.DeadTree02, 30,
-					tint, cellIndex, center, ref randomState);
-			}
-			else
-			{
-				// HF terrain OID 5: the original full plains forest definition.
-				Color tint = HexColor(0x71, 0x79, 0x2f);
-				AddGroup(SpriteKind.Tree14, 15,
-					tint, cellIndex, center, ref randomState);
-				AddGroup(SpriteKind.Tree04, 30,
-					tint, cellIndex, center, ref randomState);
-				AddGroup(SpriteKind.Tree07, 40,
-					tint, cellIndex, center, ref randomState);
-			}
-			return;
-		}
-
-		// Terrain indices 0 and 3 use HF Dirt1 in the logical terrain mapping.
-		if (cell.TerrainTypeIndex == 0 || cell.TerrainTypeIndex == 3)
-		{
-			Color tint = HexColor(0x71, 0x79, 0x2f);
-			AddGroup(SpriteKind.DeadTree02, 5, tint,
-				cellIndex, center, ref randomState);
-			AddGroup(SpriteKind.DeadTree07, 5, tint,
-				cellIndex, center, ref randomState);
-		}
+			HexVegetationTint.DeepGreen => HexColor(0x9a, 0xc0, 0x82),
+			HexVegetationTint.Autumn => HexColor(0xe0, 0x86, 0x3f),
+			HexVegetationTint.Dry => HexColor(0xc3, 0xa5, 0x68),
+			HexVegetationTint.Frost => HexColor(0x9e, 0xb8, 0xb4),
+			HexVegetationTint.Pale => HexColor(0xc8, 0xc5, 0x9d),
+			_ => Color.white
+		};
+		return new Color(
+			Mathf.Clamp01(color.r * multiplier.r),
+			Mathf.Clamp01(color.g * multiplier.g),
+			Mathf.Clamp01(color.b * multiplier.b), 1f);
 	}
 
 	public void Apply()

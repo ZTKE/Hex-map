@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   surfaceMode: 1
   hfColliderSubdivisions: 4
-  hfOverlaySubdivisionLevels: 1
+  hfOverlaySubdivisionLevels: 2
+  hfRoadSurfaceOffset: 0.08
   hfRiverSurfaceOffset: 0.12
   hillHeight: 2.9
   mountainHeight: 5.45

@@ -43,6 +43,10 @@ float4 GetCellData(float2 cellDataCoordinates, bool editMode)
 // w: Hex grid wrap size, for X wrapping. Is zero if there is no wrapping.
 float4 _CellHighlighting;
 
+// Shared editor overlay control. Catlike's terrain keeps its material keyword;
+// HF uses this global value because its relief and water are separate materials.
+float _HexEditorShowGrid;
+
 // Hex grid data derived from world-space XZ position.
 struct HexGridData
 {
@@ -101,6 +105,23 @@ struct HexGridData
 		return Smoothstep01(innerThreshold) * Smoothstep10(outerThreshold);
 	}
 };
+
+// Keep the editor overlay analytic in world-space XZ. It therefore follows the
+// shader-displaced HF surface without needing a second floating UI mesh.
+float3 ApplyHFEditorOverlay(float3 baseColor, HexGridData grid)
+{
+	float gridLine = grid.SmoothstepRange(0.955, 1.005) *
+		saturate(_HexEditorShowGrid);
+	baseColor = lerp(baseColor, baseColor * 0.5, gridLine * 0.52);
+
+	if (grid.IsHighlighted())
+	{
+		float outline = grid.SmoothstepRange(0.90, 0.985);
+		float3 highlightColor = float3(1.0, 0.72, 0.12);
+		baseColor = lerp(baseColor, highlightColor, outline * 0.88);
+	}
+	return saturate(baseColor);
+}
 
 #define HEX_ANGLED_EDGE_VECTOR float2(1, sqrt(3))
 

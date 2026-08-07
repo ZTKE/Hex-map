@@ -53,15 +53,21 @@ public struct HexCell
 			grid.ShaderData.ViewElevationChanged(index);
 			grid.RefreshWaterDepthsAround(index);
 			ValidateRivers();
-			HexFlags flags = Flags;
-			for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+			// HF road placement follows the rendered HF surface, not Catlike's
+			// hidden logical elevation steps. Preserve those paths when simulation
+			// elevation changes; legacy mode keeps its original slope validation.
+			if (!grid.SurfaceSampler.UsesHFOriginalSurface)
 			{
-				if (flags.HasRoad(d))
+				HexFlags flags = Flags;
+				for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 				{
-					HexCell neighbor = GetNeighbor(d);
-					if (Mathf.Abs(elevation - neighbor.Values.Elevation) > 1)
+					if (flags.HasRoad(d))
 					{
-						RemoveRoad(d);
+						HexCell neighbor = GetNeighbor(d);
+						if (Mathf.Abs(elevation - neighbor.Values.Elevation) > 1)
+						{
+							RemoveRoad(d);
+						}
 					}
 				}
 			}
@@ -119,11 +125,46 @@ public struct HexCell
 	/// <param name="plantLevel">Plant level.</param>
 	public readonly void SetPlantLevel(int plantLevel)
 	{
-		if (Values.PlantLevel != plantLevel)
+		plantLevel = Mathf.Clamp(plantLevel, 0, 3);
+		SetVegetation(
+			grid.CellData[index].vegetation,
+			plantLevel == 3 ? 100 : plantLevel * 33);
+	}
+
+	/// <summary>
+	/// Set HF vegetation species and visual density without touching ground or
+	/// relief. The legacy 0-3 plant tier remains synchronized for gameplay cost.
+	/// </summary>
+	public readonly void SetVegetation(
+		HexVegetation vegetation, int density)
+	{
+		SetVegetation(
+			vegetation, density, grid.CellData[index].vegetationTint);
+	}
+
+	/// <summary>
+	/// Set HF vegetation species, density, and colour theme atomically.
+	/// </summary>
+	public readonly void SetVegetation(
+		HexVegetation vegetation, int density, HexVegetationTint tint)
+	{
+		density = Mathf.Clamp(density, 0, 100);
+		int plantLevel = density == 0 ? 0 :
+			Mathf.Clamp(Mathf.CeilToInt(density * (3f / 100f)), 1, 3);
+		HexCellData data = grid.CellData[index];
+		if (data.vegetation == vegetation && data.vegetationTint == tint &&
+			data.VegetationDensity == density &&
+			data.PlantLevel == plantLevel)
 		{
-			Values = Values.WithPlantLevel(plantLevel);
-			Refresh();
+			return;
 		}
+
+		data.vegetation = vegetation;
+		data.vegetationTint = tint;
+		data.vegetationDensity = (byte)density;
+		data.values = data.values.WithPlantLevel(plantLevel);
+		grid.CellData[index] = data;
+		Refresh();
 	}
 
 	/// <summary>
@@ -167,8 +208,8 @@ public struct HexCell
 		{
 			Values = Values.WithTerrainTypeIndex(terrainTypeIndex);
 			grid.ShaderData.RefreshTerrain(index);
-			// HF foreground definitions are part of the terrain type, so the chunk
-			// batch must be rebuilt together with the logical material byte.
+			// Rebuild the chunk because the visible HF ground material changed.
+			// Vegetation species and density remain independent cell data.
 			grid.RefreshCell(index);
 		}
 	}
@@ -210,6 +251,20 @@ public struct HexCell
 		if (grid.CellData[index].landform != landform)
 		{
 			grid.CellData[index].landform = landform;
+			grid.RefreshCellWithDependents(index);
+		}
+	}
+
+	/// <summary>
+	/// Rotate the authored HF stamp without changing its material or relief.
+	/// Neighbor chunks are refreshed because HF stamps overlap cell boundaries.
+	/// </summary>
+	public readonly void SetTerrainRotation(int rotationStep)
+	{
+		rotationStep = ((rotationStep % 6) + 6) % 6;
+		if (grid.CellData[index].TerrainRotation != rotationStep)
+		{
+			grid.CellData[index].terrainRotation = (byte)rotationStep;
 			grid.RefreshCellWithDependents(index);
 		}
 	}
@@ -265,6 +320,22 @@ public struct HexCell
 		RemoveOutgoingRiver();
 	}
 
+	/// <summary>
+	/// Remove the river segment that crosses one edge, preserving the other side
+	/// of the cell when possible.
+	/// </summary>
+	public readonly void RemoveRiverThroughEdge(HexDirection direction)
+	{
+		if (Flags.HasRiverIn(direction))
+		{
+			RemoveIncomingRiver();
+		}
+		if (Flags.HasRiverOut(direction))
+		{
+			RemoveOutgoingRiver();
+		}
+	}
+
 	static bool CanRiverFlow (HexValues from, HexValues to) =>
 		from.Elevation >= to.Elevation || from.WaterLevel == to.Elevation;
 
@@ -272,7 +343,19 @@ public struct HexCell
 	/// Set the outgoing river.
 	/// </summary>
 	/// <param name="direction">River direction.</param>
-	public readonly void SetOutgoingRiver (HexDirection direction)
+	public readonly void SetOutgoingRiver(HexDirection direction) =>
+		SetOutgoingRiver(direction, false);
+
+	/// <summary>
+	/// Set an HF river segment in the user's stroke direction. HF's rendered
+	/// channel is cut from a common authored datum, so Catlike's hidden logical
+	/// elevation must not silently reject an otherwise valid visual path.
+	/// </summary>
+	public readonly void SetHFOutgoingRiver(HexDirection direction) =>
+		SetOutgoingRiver(direction, true);
+
+	readonly void SetOutgoingRiver(
+		HexDirection direction, bool useHFPathRule)
 	{
 		if (Flags.HasRiverOut(direction))
 		{
@@ -280,7 +363,7 @@ public struct HexCell
 		}
 
 		HexCell neighbor = GetNeighbor(direction);
-		if (!CanRiverFlow(Values, neighbor.Values))
+		if (!useHFPathRule && !CanRiverFlow(Values, neighbor.Values))
 		{
 			return;
 		}
@@ -304,14 +387,25 @@ public struct HexCell
 	/// Add a road in the given direction.
 	/// </summary>
 	/// <param name="direction">Road direction.</param>
-	public readonly void AddRoad(HexDirection direction)
+	public readonly void AddRoad(HexDirection direction) =>
+		AddRoad(direction, false);
+
+	/// <summary>
+	/// Add a road using HF surface ownership. Logical Catlike elevation is not a
+	/// valid slope test for a road that conforms to the rendered HF surface.
+	/// </summary>
+	public readonly void AddHFRoad(HexDirection direction) =>
+		AddRoad(direction, true);
+
+	readonly void AddRoad(HexDirection direction, bool useHFPathRule)
 	{
 		HexFlags flags = Flags;
 		HexCell neighbor = GetNeighbor(direction);
 		if (
 			!flags.HasRoad(direction) && !flags.HasRiver(direction) &&
 			Values.SpecialIndex == 0 && neighbor.Values.SpecialIndex == 0 &&
-			Mathf.Abs(Values.Elevation - neighbor.Values.Elevation) <= 1
+			(useHFPathRule ||
+				Mathf.Abs(Values.Elevation - neighbor.Values.Elevation) <= 1)
 		)
 		{
 			Flags = flags.WithRoad(direction);
@@ -336,8 +430,26 @@ public struct HexCell
 		}
 	}
 
+	/// <summary>
+	/// Remove only the road segment that crosses one edge.
+	/// </summary>
+	public readonly void RemoveRoadThroughEdge(HexDirection direction)
+	{
+		if (Flags.HasRoad(direction))
+		{
+			RemoveRoad(direction);
+		}
+	}
+
 	readonly void ValidateRivers()
 	{
+		// HF's visible surface is authored independently of Catlike elevation.
+		// Direction remains useful for river animation and serialization, but the
+		// legacy elevation rule is not a valid reason to delete an HF path.
+		if (grid.SurfaceSampler.UsesHFOriginalSurface)
+		{
+			return;
+		}
 		HexFlags flags = Flags;
 		if (flags.HasAny(HexFlags.RiverOut) &&
 			!CanRiverFlow(Values, GetNeighbor(flags.RiverOutDirection()).Values)

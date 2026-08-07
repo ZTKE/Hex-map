@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -214,9 +214,7 @@ public class HexCellShaderData : MonoBehaviour
 		// HF rotates every complete terrain stamp independently. Connected
 		// mountains merge through their mixer/height overlap; aligning stamps to a
 		// procedural ridge axis is a newer topology rule and changes HF's artwork.
-		float ridgeAngle =
-			(HexMetrics.SampleHashGrid(Grid.CellPositions[cellIndex]).a - 0.5f) *
-			Mathf.PI * 2f;
+		float ridgeAngle = cell.TerrainRotation * (Mathf.PI / 3f);
 		float angle01 = Mathf.Repeat(
 			ridgeAngle / (Mathf.PI * 2f) + 0.5f, 1f);
 		int packedLandformAndAngle =

@@ -101,6 +101,8 @@ public sealed class HexTerrainStyle : ScriptableObject
 	public HexSurfaceMode surfaceMode = HexSurfaceMode.LegacyCatlike;
 	[Range(2, 8)] public int hfColliderSubdivisions = 4;
 	[Range(0, 2)] public int hfOverlaySubdivisionLevels = 1;
+	[Tooltip("Road height above the sampled HF surface. A small positive gap prevents the curved terrain from cutting through the road ribbon.")]
+	[Range(0f, 0.25f)] public float hfRoadSurfaceOffset = 0.08f;
 	[Tooltip("River overlay height above the HF-carved channel surface.")]
 	[Range(0f, 0.5f)] public float hfRiverSurfaceOffset = 0.12f;
 

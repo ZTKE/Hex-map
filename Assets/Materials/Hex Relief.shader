@@ -91,6 +91,8 @@ Shader "Hex Map/Relief"
 			float4 _HexShallowWaterColor;
 			float4 _HexWetSandColor;
 			float4 _HexDrySandColor;
+			float4 _HexRiverWaterColor;
+			float4 _HexRiverBankColor;
 
 			struct Attributes
 			{
@@ -125,7 +127,7 @@ Shader "Hex Map/Relief"
 				float4 localData : TEXCOORD5;
 				half fogFactor : TEXCOORD6;
 				float2 localPosition : TEXCOORD7;
-				float2 waterData : TEXCOORD8;
+				float3 waterData : TEXCOORD8;
 			};
 
 			TessControlPoint Vert(Attributes input)
@@ -231,8 +233,9 @@ Shader "Hex Map/Relief"
 					surface.moduleUV, surface.moduleIndex, surface.seaInfluence);
 				output.fogFactor = ComputeFogFactor(positionInputs.positionCS.z);
 				output.localPosition = localPosition;
-				output.waterData = float2(
-					surface.seaInfluence, surface.waterSurfaceY);
+				output.waterData = float3(
+					surface.seaInfluence, surface.waterSurfaceY,
+					surface.riverDistance);
 				return output;
 			}
 
@@ -451,6 +454,9 @@ Shader "Hex Map/Relief"
 				float edgeFade = lerp(
 					reliefPresence, input.relief.w, originalBlend);
 				clip(edgeFade - 0.025);
+				float waterDepth = max(
+					input.waterData.y - input.positionWS.y, 0.0);
+				float submerged = step(0.001, waterDepth);
 
 				// HF's final diffuse was baked per pixel and already contained the
 				// Oven height-offset light/shadow pass. Keep this as a separate path:
@@ -460,12 +466,20 @@ Shader "Hex Map/Relief"
 				{
 					half3 color = HF_EvaluateOriginalDiffuse(
 						input.cellIndices.x, input.localPosition);
+					// HF only authored three flat-ground triplets (Dirt, Plains and
+					// Marsh), while the editor exposes five independent logical biomes.
+					// IDs 3 and 4 therefore have to reuse HF's structural diffuse/mixer
+					// detail, but must not reuse its final colour. Apply the same logical
+					// five-biome neighbourhood material used by the non-faithful path on
+					// top. This keeps HF height/mixer continuity and texture detail while
+					// making Desert, Grass, Plains, Tundra and Snow genuinely distinct.
+					half3 logicalGround = SampleHFMixedReliefGround(
+						input.positionWS, terrainIndex);
+					color = lerp(
+						color, logicalGround, saturate(_HexTerrainAtlasBlend));
 					// HF's Sand / Water triplet owns the shoreline shape, while
 					// the current palette keeps the project's established coast art.
 					float seaInfluence = saturate(input.waterData.x);
-					float waterDepth = max(
-						input.waterData.y - input.positionWS.y, 0.0);
-					float submerged = step(0.001, waterDepth);
 					half3 sand = lerp(
 						_HexDrySandColor.rgb, _HexWetSandColor.rgb,
 						smoothstep(0.0, 0.55, waterDepth));
@@ -480,6 +494,29 @@ Shader "Hex Map/Relief"
 					color = lerp(
 						color, coastArt,
 						smoothstep(0.06, 0.78, seaInfluence) * submerged);
+
+					// HF owns the complete visible river in faithful mode. Colour the
+					// tessellated carved surface directly, avoiding the legacy ribbon's
+					// straight edges and triangle/terrain intersections.
+					float riverBank = 1.0 - smoothstep(
+						_HexReliefRiverCarve.x + 0.015,
+						_HexReliefRiverCarve.x + 0.12,
+						input.waterData.z);
+					float riverCore = 1.0 - smoothstep(
+						_HexReliefRiverCarve.x * 0.72,
+						_HexReliefRiverCarve.x + 0.065,
+						input.waterData.z);
+					half riverRipple = 0.94h + 0.06h * sin(
+						input.positionWS.x * 0.31h + input.positionWS.z * 0.47h -
+						_Time.y * 1.8h);
+					half visibleRiver = 1.0h - smoothstep(
+						0.42h, 0.92h, seaInfluence);
+					color = lerp(
+						color, _HexRiverBankColor.rgb,
+						riverBank * 0.56h * visibleRiver);
+					color = lerp(
+						color, _HexRiverWaterColor.rgb * riverRipple,
+						riverCore * 0.96h * visibleRiver);
 
 					bool editMode = false;
 					#ifdef _HEX_MAP_EDIT_MODE
@@ -504,6 +541,11 @@ Shader "Hex Map/Relief"
 						mainLight.color * diffuse * shadowAttenuation;
 					color *= min(lighting, 1.2h);
 					color = MixFog(color, input.fogFactor);
+					if (submerged < 0.5)
+					{
+						color = ApplyHFEditorOverlay(
+							color, GetHexGridData(input.positionWS.xz));
+					}
 					return half4(color, 1.0h);
 				}
 
@@ -665,6 +707,11 @@ Shader "Hex Map/Relief"
 					color, input.positionWS, rawDiffuse,
 					lerp(0.86, 1.0, isMountain));
 				color = MixFog(color, input.fogFactor);
+				if (submerged < 0.5)
+				{
+					color = ApplyHFEditorOverlay(
+						color, GetHexGridData(input.positionWS.xz));
+				}
 				return half4(color, 1.0);
 			}
 			ENDHLSL

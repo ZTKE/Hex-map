@@ -843,9 +843,19 @@ public class HexMapGenerator : MonoBehaviour
 				{
 					cellBiome.plant += 1;
 				}
-				grid.CellData[i].values = cell.values.
+				HexCellData generatedCell = grid.CellData[i];
+				generatedCell.values = cell.values.
 					WithTerrainTypeIndex(cellBiome.terrain).
 					WithPlantLevel(cellBiome.plant);
+				generatedCell.vegetation = cellBiome.terrain switch
+				{
+					4 => HexVegetation.ColdMixed,
+					3 => HexVegetation.Deadwood,
+					_ => HexVegetation.Mixed
+				};
+				generatedCell.vegetationDensity = (byte)(cellBiome.plant == 3 ?
+					100 : cellBiome.plant * 33);
+				grid.CellData[i] = generatedCell;
 			}
 			else
 			{

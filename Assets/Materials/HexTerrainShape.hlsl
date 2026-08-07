@@ -60,6 +60,7 @@ struct HFReliefSurface
 	// a straight hex-edge shore strip.
 	float seaInfluence;
 	float waterSurfaceY;
+	float riverDistance;
 };
 
 float HFHash21(float2 p, float salt)
@@ -591,6 +592,7 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	result.moduleIndex = -1.0;
 	result.seaInfluence = 0.0;
 	result.waterSurfaceY = 0.0;
+	result.riverDistance = 1000.0;
 
 	float width = _HexCellData_TexelSize.z;
 	float2 rootOffset = float2(
@@ -697,6 +699,7 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 		inverseWeight);
 	result.waterSurfaceY = accumulator.waterSurfaceWeight > 0.0001 ?
 		_HexHFOriginalDatumY : 0.0;
+	result.riverDistance = accumulator.riverDistance;
 	result.y = baseY + displacement + 0.018;
 	return result;
 }
@@ -717,6 +720,7 @@ HFReliefSurface HF_EvaluateLegacyRelief(float cellIndex, float2 localPosition)
 	result.moduleIndex = -1.0;
 	result.seaInfluence = 0.0;
 	result.waterSurfaceY = 0.0;
+	result.riverDistance = 1000.0;
 
 	float width = _HexCellData_TexelSize.z;
 	float2 rootOffset = float2(
@@ -809,6 +813,7 @@ HFReliefSurface HF_EvaluateLegacyRelief(float cellIndex, float2 localPosition)
 	result.height01 = saturate(result.height / max(maximum, 0.001));
 	result.bakedHeight = saturate(
 		0.5 + result.height / max(_HexHFOriginalHeightScale, 0.001));
+	result.riverDistance = riverDistance;
 	result.y = baseY + result.height + 0.018;
 	return result;
 }
@@ -840,6 +845,8 @@ HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
 		legacy.seaInfluence, original.seaInfluence, originalBlend);
 	legacy.waterSurfaceY = lerp(
 		legacy.waterSurfaceY, original.waterSurfaceY, originalBlend);
+	legacy.riverDistance = lerp(
+		legacy.riverDistance, original.riverDistance, originalBlend);
 	if (originalBlend > 0.5)
 	{
 		legacy.landform = original.landform;
