@@ -1,0 +1,3 @@
+[submodule "WW2_map_project_ref"]
+	path = References/WW2_map_project
+	url = https://github.com/ZTKE/WW2_map_project.git

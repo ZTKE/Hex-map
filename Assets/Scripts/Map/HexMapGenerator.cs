@@ -125,6 +125,8 @@ public class HexMapGenerator : MonoBehaviour
 
 	List<HexDirection> flowDirections = new();
 
+	bool preserveLandWaterMask;
+
 	struct Biome
 	{
 		public int terrain, plant;
@@ -153,8 +155,14 @@ public class HexMapGenerator : MonoBehaviour
 	/// <param name="x">X size of the map.</param>
 	/// <param name="z">Z size of the map.</param>
 	/// <param name="wrapping">Whether east-west wrapping is enabled.</param>
-	public void GenerateMap(int x, int z, bool wrapping)
+	/// <returns>Whether the map passed validation and was generated.</returns>
+	public bool GenerateMap(int x, int z, bool wrapping)
 	{
+		if (!HexGrid.TryValidateMapSize(x, z, out string validationMessage))
+		{
+			Debug.LogError(validationMessage);
+			return false;
+		}
 		Random.State originalRandomState = Random.state;
 		if (!useFixedSeed)
 		{
@@ -170,7 +178,11 @@ public class HexMapGenerator : MonoBehaviour
 		// elevated inland lakes. This keeps high logical lake levels from
 		// becoming water platforms suspended above the flattened map.
 		HexMetrics.visualWaterLevel = waterLevel;
-		grid.CreateMap(x, z, wrapping);
+		if (!grid.CreateMap(x, z, wrapping))
+		{
+			Random.state = originalRandomState;
+			return false;
+		}
 		searchFrontier ??= new HexCellPriorityQueue(grid);
 		for (int i = 0; i < cellCount; i++)
 		{
@@ -187,6 +199,214 @@ public class HexMapGenerator : MonoBehaviour
 		grid.RefreshAllCells();
 
 		Random.state = originalRandomState;
+		return true;
+	}
+
+	/// <summary>
+	/// Generate terrain while preserving the land and water silhouette of an
+	/// equirectangular source image. The source pixel array must use Unity's
+	/// bottom-left origin (the order returned by Texture2D.GetPixels32).
+	/// </summary>
+	public bool GenerateMapFromLandMask(
+		Color32[] sourcePixels,
+		int sourceWidth,
+		int sourceHeight,
+		int x,
+		int z,
+		bool wrapping,
+		int worldSeed,
+		Color32 oceanColor,
+		float sourceVMin = 0f,
+		float sourceVMax = 1f)
+	{
+		if (sourcePixels == null || sourceWidth <= 0 || sourceHeight <= 0 ||
+			sourcePixels.Length != sourceWidth * sourceHeight)
+		{
+			Debug.LogError("The world land-mask image is invalid.");
+			return false;
+		}
+		if (sourceVMin < 0f || sourceVMax > 1f ||
+			sourceVMin >= sourceVMax)
+		{
+			Debug.LogError(
+				"The world land-mask latitude crop must satisfy " +
+				"0 <= sourceVMin < sourceVMax <= 1.");
+			return false;
+		}
+		if (!HexGrid.TryValidateMapSize(x, z, out string validationMessage))
+		{
+			Debug.LogError(validationMessage);
+			return false;
+		}
+
+		Random.State originalRandomState = Random.state;
+		seed = worldSeed & int.MaxValue;
+		Random.InitState(seed);
+		cellCount = x * z;
+		HexMetrics.visualWaterLevel = waterLevel;
+		if (!grid.CreateMap(x, z, wrapping))
+		{
+			Random.state = originalRandomState;
+			return false;
+		}
+
+		bool[] landMask = BuildLandMask(
+			sourcePixels, sourceWidth, sourceHeight, x, z, oceanColor,
+			sourceVMin, sourceVMax);
+		landCells = ApplyMaskedElevation(landMask, x, z);
+		int originalRiverPercentage = riverPercentage;
+		// A normal random map is tiny compared with the imported world. Reusing its
+		// percentage verbatim creates continent-spanning walls of rivers at global
+		// scale, so use a restrained world-map budget for the baked source.
+		riverPercentage = Mathf.Min(riverPercentage, 2);
+		preserveLandWaterMask = true;
+		try
+		{
+			CreateClimate();
+			CreateRivers();
+			SetTerrainType();
+			SetLandforms();
+			grid.RefreshAllCells();
+		}
+		finally
+		{
+			preserveLandWaterMask = false;
+			riverPercentage = originalRiverPercentage;
+			Random.state = originalRandomState;
+		}
+		return true;
+	}
+
+	bool[] BuildLandMask(
+		Color32[] sourcePixels,
+		int sourceWidth,
+		int sourceHeight,
+		int targetWidth,
+		int targetHeight,
+		Color32 oceanColor,
+		float sourceVMin,
+		float sourceVMax)
+	{
+		bool[] landMask = new bool[targetWidth * targetHeight];
+		float du = 0.32f / targetWidth;
+		float sourceVRange = sourceVMax - sourceVMin;
+		float dv = 0.32f / targetHeight * sourceVRange;
+		for (int row = 0, index = 0; row < targetHeight; row++)
+		{
+			float v = Mathf.Lerp(
+				sourceVMin, sourceVMax, (row + 0.5f) / targetHeight);
+			float rowOffset = (row & 1) == 0 ? 0f : 0.5f;
+			for (int column = 0; column < targetWidth; column++, index++)
+			{
+				float u = Mathf.Repeat(
+					(column + rowOffset + 0.5f) / targetWidth, 1f);
+				bool centerIsLand = IsSourceLand(
+					sourcePixels, sourceWidth, sourceHeight, u, v, oceanColor);
+				int landVotes = centerIsLand ? 1 : 0;
+				landVotes += IsSourceLand(
+					sourcePixels, sourceWidth, sourceHeight,
+					u - du, v - dv, oceanColor) ? 1 : 0;
+				landVotes += IsSourceLand(
+					sourcePixels, sourceWidth, sourceHeight,
+					u + du, v - dv, oceanColor) ? 1 : 0;
+				landVotes += IsSourceLand(
+					sourcePixels, sourceWidth, sourceHeight,
+					u - du, v + dv, oceanColor) ? 1 : 0;
+				landVotes += IsSourceLand(
+					sourcePixels, sourceWidth, sourceHeight,
+					u + du, v + dv, oceanColor) ? 1 : 0;
+				landMask[index] = centerIsLand || landVotes >= 3;
+			}
+		}
+		return landMask;
+	}
+
+	static bool IsSourceLand(
+		Color32[] sourcePixels,
+		int sourceWidth,
+		int sourceHeight,
+		float u,
+		float v,
+		Color32 oceanColor)
+	{
+		int sourceX = Mathf.Clamp(
+			Mathf.FloorToInt(Mathf.Repeat(u, 1f) * sourceWidth),
+			0, sourceWidth - 1);
+		int sourceY = Mathf.Clamp(
+			Mathf.FloorToInt(Mathf.Clamp01(v) * sourceHeight),
+			0, sourceHeight - 1);
+		Color32 color = sourcePixels[sourceX + sourceY * sourceWidth];
+		return color.r != oceanColor.r || color.g != oceanColor.g ||
+			color.b != oceanColor.b;
+	}
+
+	int ApplyMaskedElevation(bool[] landMask, int width, int height)
+	{
+		int count = 0;
+		float seedOffset = (seed % 8191) * 0.00173f;
+		for (int row = 0, index = 0; row < height; row++)
+		{
+			float v = (row + 0.5f) / height;
+			for (int column = 0; column < width; column++, index++)
+			{
+				HexCellData cell = grid.CellData[index];
+				cell.values = cell.values.WithWaterLevel(waterLevel);
+				if (!landMask[index])
+				{
+					cell.values = cell.values.
+						WithElevation(waterLevel - 1).
+						WithTerrainTypeIndex(0).
+						WithPlantLevel(0);
+					cell.landform = HexLandform.Flat;
+					cell.vegetationDensity = 0;
+					grid.CellData[index] = cell;
+					continue;
+				}
+
+				count += 1;
+				bool coast = false;
+				for (HexDirection direction = HexDirection.NE;
+					direction <= HexDirection.NW; direction++)
+				{
+					if (grid.TryGetCellIndex(
+						cell.coordinates.Step(direction), out int neighborIndex) &&
+						!landMask[neighborIndex])
+					{
+						coast = true;
+						break;
+					}
+				}
+
+				float u = (column + 0.5f) / width;
+				float broadNoise = SampleWrappedNoise(u, v, 2.4f, seedOffset);
+				float detailNoise = SampleWrappedNoise(
+					u, v, 7.5f, seedOffset + 19.37f);
+				float elevationNoise = broadNoise * 0.72f + detailNoise * 0.28f;
+				int elevation = coast ? waterLevel : waterLevel +
+					Mathf.Clamp(Mathf.RoundToInt(elevationNoise * 5f), 0, 5);
+				cell.values = cell.values.
+					WithElevation(elevation).
+					WithTerrainTypeIndex(1).
+					WithPlantLevel(0);
+				cell.landform = HexLandform.Flat;
+				cell.vegetation = HexVegetation.Mixed;
+				cell.vegetationDensity = 0;
+				cell.vegetationTint = HexVegetationTint.Natural;
+				grid.CellData[index] = cell;
+			}
+		}
+		return count;
+	}
+
+	static float SampleWrappedNoise(
+		float u, float v, float frequency, float offset)
+	{
+		float x = Mathf.Repeat(u, 1f) * frequency;
+		float y = v * frequency + offset * 0.37f;
+		float left = Mathf.PerlinNoise(x + offset, y);
+		float right = Mathf.PerlinNoise(x - frequency + offset, y);
+		float blend = u * u * (3f - 2f * u);
+		return Mathf.Lerp(left, right, blend);
 	}
 
 	void CreateRegions()
@@ -696,6 +916,7 @@ public class HexMapGenerator : MonoBehaviour
 	{
 		int length = 1;
 		int cellIndex = originIndex;
+		int lastLandCellIndex = -1;
 		HexCellData cell = grid.CellData[cellIndex];
 		HexDirection direction = HexDirection.NE;
 		while (!cell.IsUnderwater)
@@ -721,6 +942,19 @@ public class HexMapGenerator : MonoBehaviour
 					continue;
 				}
 
+				if (length > 1)
+				{
+					// HF rivers are chains of shared hex edges. Consecutive
+					// segments must meet at one corner, so the next boundary has
+					// to be adjacent to the boundary through which we arrived.
+					HexDirection incomingEdge = direction.Opposite();
+					if (d != incomingEdge.Previous() &&
+						d != incomingEdge.Next())
+					{
+						continue;
+					}
+				}
+
 				int delta = neighbor.Elevation - cell.Elevation;
 				if (delta > 0)
 				{
@@ -729,9 +963,24 @@ public class HexMapGenerator : MonoBehaviour
 
 				if (neighbor.HasOutgoingRiver)
 				{
-					grid.CellData[cellIndex].flags = cell.flags.WithRiverOut(d);
-					grid.CellData[neighborIndex].flags =
-						neighbor.flags.WithRiverIn(d.Opposite());
+					HexDirection neighborIncomingEdge = d.Opposite();
+					HexDirection neighborOutgoingEdge =
+						neighbor.OutgoingRiver;
+					if (neighborOutgoingEdge !=
+							neighborIncomingEdge.Previous() &&
+						neighborOutgoingEdge != neighborIncomingEdge.Next())
+					{
+						// Crossing into the neighbor would meet its existing
+						// river only at the cell center, not at a corner node.
+						continue;
+					}
+					cell.flags = cell.flags.WithRiverOut(d);
+					cell.hfRiverEdges |= (byte)(1 << (int)d);
+					neighbor.flags = neighbor.flags.WithRiverIn(d.Opposite());
+					neighbor.hfRiverEdges |=
+						(byte)(1 << (int)d.Opposite());
+					grid.CellData[cellIndex] = cell;
+					grid.CellData[neighborIndex] = neighbor;
 					return length;
 				}
 
@@ -756,7 +1005,8 @@ public class HexMapGenerator : MonoBehaviour
 					return 0;
 				}
 
-				if (minNeighborElevation >= cell.Elevation)
+				if (!preserveLandWaterMask &&
+					minNeighborElevation >= cell.Elevation)
 				{
 					cell.values = cell.values.WithWaterLevel(
 						minNeighborElevation);
@@ -772,22 +1022,32 @@ public class HexMapGenerator : MonoBehaviour
 
 			direction = flowDirections[Random.Range(0, flowDirections.Count)];
 			cell.flags = cell.flags.WithRiverOut(direction);
+			cell.hfRiverEdges |= (byte)(1 << (int)direction);
 			grid.TryGetCellIndex(
 				cell.coordinates.Step(direction), out int outIndex);
-			grid.CellData[outIndex].flags =
-				grid.CellData[outIndex].flags.WithRiverIn(direction.Opposite());
+			HexCellData outCell = grid.CellData[outIndex];
+			outCell.flags = outCell.flags.WithRiverIn(direction.Opposite());
+			outCell.hfRiverEdges |=
+				(byte)(1 << (int)direction.Opposite());
+			grid.CellData[outIndex] = outCell;
 
 			length += 1;
 
-			if (minNeighborElevation >= cell.Elevation &&
+			if (!preserveLandWaterMask &&
+				minNeighborElevation >= cell.Elevation &&
 				Random.value < extraLakeProbability)
 			{
 				cell.values = cell.values.WithWaterLevel(cell.Elevation);
 				cell.values = cell.values.WithElevation(cell.Elevation - 1);
 			}
 			grid.CellData[cellIndex] = cell;
+			lastLandCellIndex = cellIndex;
 			cellIndex = outIndex;
 			cell = grid.CellData[cellIndex];
+		}
+		if (cell.IsUnderwater && lastLandCellIndex >= 0)
+		{
+			grid.ExtendHFRiverMouth(lastLandCellIndex);
 		}
 		return length;
 	}

@@ -65,11 +65,14 @@ public partial class HexMapEditor : MonoBehaviour
 	HexDirection dragDirection;
 	int previousCellIndex = -1;
 	int pathPreviousCellIndex = -1;
+	bool pathHasPreviousPoint;
+	Vector3 pathPreviousPoint;
 	int hoveredCellIndex = -1;
 	EditorTool activeTool;
 	bool editMode = true;
 	bool gridVisible;
 	bool paintSea = true;
+	bool overviewInputSuspended;
 
 	public void SetTerrainTypeIndex(int index)
 	{
@@ -260,6 +263,17 @@ public partial class HexMapEditor : MonoBehaviour
 		{
 			EndHistoryStroke();
 		}
+		if (hexGrid && hexGrid.IsOverviewMode)
+		{
+			if (!overviewInputSuspended)
+			{
+				overviewInputSuspended = true;
+				ResetPathStroke();
+				ClearCellHighlightData();
+			}
+			return;
+		}
+		overviewInputSuspended = false;
 		if (!editMode || IsHFModalOpen())
 		{
 			ResetPathStroke();
@@ -366,7 +380,60 @@ public partial class HexMapEditor : MonoBehaviour
 		tool == EditorTool.RiverDraw || tool == EditorTool.RiverErase;
 
 	HexCell GetCellUnderCursor() =>
-		hexGrid.GetCell(Camera.main.ScreenPointToRay(Input.mousePosition));
+		TryGetPointerMapPoint(out HexCell cell, out _) ? cell : default;
+
+	bool TryGetPointerMapPoint(out HexCell cell, out Vector3 worldPoint)
+	{
+		cell = default;
+		worldPoint = default;
+		Camera camera = Camera.main;
+		if (!camera || !hexGrid)
+		{
+			return false;
+		}
+
+		Ray ray = camera.ScreenPointToRay(Input.mousePosition);
+		HexCell terrainCell = default;
+		float terrainDistance = float.PositiveInfinity;
+		if (Physics.Raycast(ray, out RaycastHit terrainHit))
+		{
+			terrainCell = hexGrid.GetCell(terrainHit.point);
+			terrainDistance = terrainHit.distance;
+			worldPoint = terrainHit.point;
+		}
+
+		if (!hexGrid.SurfaceSampler.UsesHFOriginalSurface)
+		{
+			cell = terrainCell;
+			return cell;
+		}
+
+		// HF renders the sea as a collider-free continuous plane. Picking only the
+		// relief collider sends an oblique ray through the visible water and selects
+		// a displaced seabed cell instead. Prefer the water-plane cell only when it
+		// is logically underwater and the plane is in front of the terrain hit, so
+		// hills and dry coast continue to use their real surface collider.
+		Vector3 waterPoint = hexGrid.transform.TransformPoint(
+			new Vector3(
+				0f,
+				HexMetrics.visualWaterLevel * HexMetrics.elevationStep,
+				0f));
+		Plane waterPlane = new(hexGrid.transform.up, waterPoint);
+		if (waterPlane.Raycast(ray, out float waterDistance) &&
+			waterDistance >= 0f && waterDistance <= terrainDistance + 0.001f)
+		{
+			HexCell waterCell = hexGrid.GetCell(ray.GetPoint(waterDistance));
+			if (waterCell && hexGrid.CellData[waterCell.Index].IsUnderwater)
+			{
+				cell = waterCell;
+				worldPoint = ray.GetPoint(waterDistance);
+				return true;
+			}
+		}
+
+		cell = terrainCell;
+		return cell;
+	}
 
 	void CreateUnit()
 	{
@@ -390,6 +457,12 @@ public partial class HexMapEditor : MonoBehaviour
 
 	void HandlePathTool(bool pointerOverUI)
 	{
+		if (activeTool == EditorTool.RiverDraw ||
+			activeTool == EditorTool.RiverErase)
+		{
+			HandleRiverEdgeTool(pointerOverUI);
+			return;
+		}
 		if (pointerOverUI)
 		{
 			ResetPathStroke();
@@ -397,14 +470,15 @@ public partial class HexMapEditor : MonoBehaviour
 			return;
 		}
 
-		HexCell currentCell = GetCellUnderCursor();
+		bool hasPoint = TryGetPointerMapPoint(
+			out HexCell currentCell, out Vector3 worldPoint);
 		UpdateCellHighlightData(currentCell);
 		if (!Input.GetMouseButton(0))
 		{
 			ResetPathStroke();
 			return;
 		}
-		if (!currentCell)
+		if (!hasPoint || !currentCell)
 		{
 			ResetPathStroke();
 			return;
@@ -414,13 +488,15 @@ public partial class HexMapEditor : MonoBehaviour
 		if (pathPreviousCellIndex < 0)
 		{
 			pathPreviousCellIndex = currentCell.Index;
-			if (activeTool == EditorTool.RiverErase)
+			if (activeTool == EditorTool.RoadErase)
 			{
-				currentCell.RemoveRiver();
-			}
-			else if (activeTool == EditorTool.RoadErase)
-			{
-				currentCell.RemoveRoads();
+				Vector3 localPoint =
+					hexGrid.transform.InverseTransformPoint(worldPoint);
+				if (TryGetNearestRoadDirection(
+					currentCell, localPoint, out HexDirection direction))
+				{
+					currentCell.RemoveRoadThroughEdge(direction);
+				}
 			}
 			return;
 		}
@@ -431,6 +507,160 @@ public partial class HexMapEditor : MonoBehaviour
 
 		ApplyPath(hexGrid.GetCell(pathPreviousCellIndex), currentCell);
 		pathPreviousCellIndex = currentCell.Index;
+	}
+
+	bool TryGetNearestRoadDirection(
+		HexCell cell, Vector3 localPoint, out HexDirection nearest)
+	{
+		Vector3 center = hexGrid.CellPositions[cell.Index];
+		Vector2 point = new(localPoint.x - center.x, localPoint.z - center.z);
+		if (hexGrid.Wrapping)
+		{
+			float mapWidth = HexMetrics.innerDiameter * hexGrid.CellCountX;
+			if (point.x < -mapWidth * 0.5f)
+			{
+				point.x += mapWidth;
+			}
+			else if (point.x > mapWidth * 0.5f)
+			{
+				point.x -= mapWidth;
+			}
+		}
+
+		nearest = HexDirection.NE;
+		float nearestDistance = float.PositiveInfinity;
+		bool found = false;
+		for (HexDirection direction = HexDirection.NE;
+			direction <= HexDirection.NW; direction++)
+		{
+			if (!cell.Flags.HasRoad(direction))
+			{
+				continue;
+			}
+			Vector3 first = HexMetrics.GetFirstCorner(direction);
+			Vector3 second = HexMetrics.GetSecondCorner(direction);
+			Vector2 edgeCenter = new(
+				(first.x + second.x) * 0.5f,
+				(first.z + second.z) * 0.5f);
+			float distance = DistanceToSegmentSquared(
+				point, Vector2.zero, edgeCenter);
+			if (distance < nearestDistance)
+			{
+				nearestDistance = distance;
+				nearest = direction;
+				found = true;
+			}
+		}
+		return found;
+	}
+
+	void HandleRiverEdgeTool(bool pointerOverUI)
+	{
+		if (pointerOverUI)
+		{
+			ResetPathStroke();
+			ClearCellHighlightData();
+			return;
+		}
+
+		bool hasPoint = TryGetPointerMapPoint(
+			out HexCell currentCell, out Vector3 worldPoint);
+		UpdateCellHighlightData(currentCell);
+		if (!Input.GetMouseButton(0))
+		{
+			ResetPathStroke();
+			return;
+		}
+		if (!hasPoint || !currentCell)
+		{
+			ResetPathStroke();
+			return;
+		}
+
+		BeginHistoryStroke();
+		Vector3 localPoint = hexGrid.transform.InverseTransformPoint(worldPoint);
+		if (!pathHasPreviousPoint)
+		{
+			ApplyRiverEdgeAt(localPoint);
+		}
+		else
+		{
+			float distance = Vector2.Distance(
+				new Vector2(pathPreviousPoint.x, pathPreviousPoint.z),
+				new Vector2(localPoint.x, localPoint.z));
+			int steps = Mathf.Max(1, Mathf.CeilToInt(
+				distance / (HexMetrics.outerRadius * 0.2f)));
+			for (int step = 1; step <= steps; step++)
+			{
+				ApplyRiverEdgeAt(Vector3.Lerp(
+					pathPreviousPoint, localPoint, step / (float)steps));
+			}
+		}
+		pathPreviousPoint = localPoint;
+		pathHasPreviousPoint = true;
+	}
+
+	void ApplyRiverEdgeAt(Vector3 localPoint)
+	{
+		Vector3 worldPoint = hexGrid.transform.TransformPoint(localPoint);
+		HexCell cell = hexGrid.GetCell(worldPoint);
+		if (!cell)
+		{
+			return;
+		}
+		HexDirection direction = GetNearestRiverEdge(cell, localPoint);
+		if (activeTool == EditorTool.RiverErase)
+		{
+			cell.RemoveRiverThroughEdge(direction);
+		}
+		else
+		{
+			cell.SetHFRiverEdge(direction);
+		}
+	}
+
+	HexDirection GetNearestRiverEdge(HexCell cell, Vector3 localPoint)
+	{
+		Vector3 center = hexGrid.CellPositions[cell.Index];
+		Vector2 point = new(localPoint.x - center.x, localPoint.z - center.z);
+		if (hexGrid.Wrapping)
+		{
+			float mapWidth = HexMetrics.innerDiameter * hexGrid.CellCountX;
+			if (point.x < -mapWidth * 0.5f)
+			{
+				point.x += mapWidth;
+			}
+			else if (point.x > mapWidth * 0.5f)
+			{
+				point.x -= mapWidth;
+			}
+		}
+
+		HexDirection nearest = HexDirection.NE;
+		float nearestDistance = float.PositiveInfinity;
+		for (HexDirection direction = HexDirection.NE;
+			direction <= HexDirection.NW; direction++)
+		{
+			Vector3 first = HexMetrics.GetFirstCorner(direction);
+			Vector3 second = HexMetrics.GetSecondCorner(direction);
+			float distance = DistanceToSegmentSquared(
+				point, new Vector2(first.x, first.z),
+				new Vector2(second.x, second.z));
+			if (distance < nearestDistance)
+			{
+				nearestDistance = distance;
+				nearest = direction;
+			}
+		}
+		return nearest;
+	}
+
+	static float DistanceToSegmentSquared(Vector2 point, Vector2 a, Vector2 b)
+	{
+		Vector2 edge = b - a;
+		float denominator = Mathf.Max(Vector2.Dot(edge, edge), 0.0001f);
+		float t = Mathf.Clamp01(Vector2.Dot(point - a, edge) / denominator);
+		return (point - (a + edge * t)).sqrMagnitude;
 	}
 
 	void ApplyPath(HexCell from, HexCell to)
@@ -561,7 +791,11 @@ public partial class HexMapEditor : MonoBehaviour
 		return false;
 	}
 
-	void ResetPathStroke() => pathPreviousCellIndex = -1;
+	void ResetPathStroke()
+	{
+		pathPreviousCellIndex = -1;
+		pathHasPreviousPoint = false;
+	}
 
 	void HandleInput()
 	{

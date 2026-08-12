@@ -3,6 +3,14 @@
 
 // Original HoneyFramework terrain triplets. These textures are shared by the
 // whole map; only the logical per-cell data grows with map size.
+// Unity recognizes Linear/Clamp and Linear/Repeat in inline sampler names.
+// Do not borrow sampler_HexCellData here: that texture is intentionally Point
+// filtered and made the authored HF diffuse/mixer masks visibly pixelated.
+SAMPLER(sampler_HFOriginal_linear_clamp);
+SAMPLER(sampler_HFOriginal_linear_repeat);
+#undef HF_TERRAIN_LINEAR_SAMPLER
+#define HF_TERRAIN_LINEAR_SAMPLER sampler_HFOriginal_linear_clamp
+
 TEXTURE2D(_HFDirtDiffuse);
 // All original HF stamps use the same bilinear sampler. Sharing it avoids the
 // 16-sampler ceiling of the terrain Shader Graph while retaining every source
@@ -175,20 +183,23 @@ float HFOriginalSampleMixer(float panel, float2 uv)
 
 float3 HFOriginalSampleRiverDiffuse(float2 uv)
 {
+	float2 riverUV = float2(saturate(uv.x), frac(uv.y));
 	return SAMPLE_TEXTURE2D_LOD(
-		_HFRiverDiffuse, HF_TERRAIN_LINEAR_SAMPLER, saturate(uv), 0).rgb;
+		_HFRiverDiffuse, sampler_HFOriginal_linear_repeat, riverUV, 0).rgb;
 }
 
 float HFOriginalSampleRiverHeight(float2 uv)
 {
+	float2 riverUV = float2(saturate(uv.x), frac(uv.y));
 	return SAMPLE_TEXTURE2D_LOD(
-		_HFRiverHeight, HF_TERRAIN_LINEAR_SAMPLER, saturate(uv), 0).r;
+		_HFRiverHeight, sampler_HFOriginal_linear_repeat, riverUV, 0).r;
 }
 
 float HFOriginalSampleRiverMixer(float2 uv)
 {
+	float2 riverUV = float2(saturate(uv.x), frac(uv.y));
 	return SAMPLE_TEXTURE2D_LOD(
-		_HFRiverMixer, HF_TERRAIN_LINEAR_SAMPLER, saturate(uv), 0).r;
+		_HFRiverMixer, sampler_HFOriginal_linear_repeat, riverUV, 0).r;
 }
 
 #endif

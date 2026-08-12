@@ -10,6 +10,9 @@ float4 _HexWetSandColor;
 float4 _HexDrySandColor;
 float4 _HexRiverWaterColor;
 float4 _HexRiverBankColor;
+float4 _HexRiverWaterMotion;
+// x: mouth length, y: final width, z: tint strength, w: foam strength.
+float4 _HexRiverMouth;
 float _HexWaterStyleBlend;
 
 TEXTURE2D(_HexHFRiverMixer);
@@ -35,7 +38,7 @@ float HexHFRiverMask(float2 riverUV)
 	float compactMask = SAMPLE_TEXTURE2D(
 		_HexHFRiverMixer, sampler_HexHFRiverMixer, hfUV).r;
 	float originalMask = SAMPLE_TEXTURE2D(
-		_HFRiverMixer, sampler_HexHFRiverMixer, hfUV).r;
+		_HFRiverMixer, sampler_HFOriginal_linear_repeat, hfUV).r;
 	float mask = lerp(
 		compactMask, originalMask, saturate(_HexHFOriginalBlend));
 	return lerp(1.0, mask, saturate(_HexHFRiverMixerStrength));
@@ -43,9 +46,7 @@ float HexHFRiverMask(float2 riverUV)
 
 float3 HexHFOriginalRiverDiffuse(float2 riverUV)
 {
-	return SAMPLE_TEXTURE2D(
-		_HFRiverDiffuse, sampler_HexHFRiverMixer,
-		HexHFRiverUV(riverUV)).rgb;
+	return HFOriginalSampleRiverDiffuse(riverUV);
 }
 
 float3 HexStyledColor(float3 fallback, float3 styled)
@@ -224,6 +225,9 @@ void GetFragmentDataWater_float(
 	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
 	float shore = 0.0;
 	float waterCoverage = 1.0;
+	float riverMouthMask = 0.0;
+	float riverMouthFoam = 0.0;
+	float2 riverMouthUV = 0.0;
 	HexGridData grid = GetHexGridData(WorldPosition.xz);
 	if (_HexHFOriginalBlend > 0.999)
 	{
@@ -241,8 +245,9 @@ void GetFragmentDataWater_float(
 		// Use the same reconstructed height that displaces the opaque HF
 		// surface. Foam therefore follows the actual water / terrain
 		// intersection instead of the much wider Sea mixer ownership band.
+		float2 reliefPoint = local * (1.5 / HF_MIXER_SQRT3_OVER_2);
 		HFReliefSurface coastSurface = HF_EvaluateOriginalRelief(
-			cellIndex, local * (1.5 / HF_MIXER_SQRT3_OVER_2));
+			cellIndex, reliefPoint);
 		float signedWaterDepth =
 			WorldPosition.y - HFStabilizeOceanSurfaceY(coastSurface);
 		// The relief mesh is distance-tessellated, so its rasterized depth is an
@@ -266,6 +271,47 @@ void GetFragmentDataWater_float(
 		// much wider, so remap world-space depth to an equally narrow contour or
 		// the complete shallow stamp turns into a large white / sand blob.
 		shore = 1.0 - smoothstep(0.04, 0.52, waterDepth);
+
+		// The terrain pass deliberately suppresses river colour and carving below
+		// water. Continue only a confirmed dry river mouth on this water surface,
+		// following the first underwater topology segment and fading it before the
+		// old river flags can become visible in deep ocean or across a lake floor.
+		float mouthLength = max(_HexRiverMouth.x, 0.05);
+		[branch]
+		if (coastSurface.riverDistance < mouthLength && waterCoverage > 0.001)
+		{
+			float underwaterRiverDistance;
+			HFWaterRiverCoordinates(
+				grid.cellOffsetCoordinates, reliefPoint,
+				underwaterRiverDistance, riverMouthUV);
+			float alongMouth = saturate(
+				coastSurface.riverDistance / mouthLength);
+			float mouthWidth = lerp(
+				_HexReliefRiverCarve.x + 0.055,
+				max(_HexRiverMouth.y, _HexReliefRiverCarve.x + 0.06),
+				smoothstep(0.0, 1.0, alongMouth));
+			float widthFeather = max(fwidth(underwaterRiverDistance) * 1.5, 0.025);
+			float channelMask = 1.0 - smoothstep(
+				mouthWidth, mouthWidth + widthFeather,
+				underwaterRiverDistance);
+			float lengthFade = 1.0 - smoothstep(0.34, 1.0, alongMouth);
+			// Keep a proper river mouth in shallow water, but dissolve it before it
+			// reads as a coloured stripe continuing through the deep ocean.
+			float depthFade = 1.0 - smoothstep(
+				0.42, 2.2, waterDepth);
+			riverMouthMask = channelMask * lengthFade * depthFade * waterCoverage;
+
+			float flowPhase =
+				riverMouthUV.y * max(_HexRiverWaterMotion.y, 0.25) *
+					(2.0 * HF_PI) -
+				Time * max(_HexRiverWaterMotion.x, 0.01) * (2.0 * HF_PI);
+			float flowCrest = 0.5 + 0.5 * sin(
+				flowPhase + riverMouthUV.x * 3.2);
+			float mouthEdge = smoothstep(
+				0.42, 0.92, underwaterRiverDistance / max(mouthWidth, 0.001));
+			riverMouthFoam =
+				(flowCrest * 0.38 + mouthEdge * 0.62) * riverMouthMask;
+		}
 	}
 	float foam = Foam(shore, WorldPosition.xz, Time, NoiseTexture);
 	float3 water = HexStyledColor(Color.rgb, _HexDeepOceanColor.rgb);
@@ -274,6 +320,13 @@ void GetFragmentDataWater_float(
 	float3 c = saturate(lerp(
 		water + _HexShoreFoamColor.rgb * waves * 0.12,
 		coast, saturate(_HexHFOriginalBlend)));
+	float mouthTint = saturate(_HexRiverMouth.z) * riverMouthMask;
+	float3 mouthWater = lerp(
+		_HexRiverWaterColor.rgb,
+		_HexShallowWaterColor.rgb, 0.24 + shore * 0.18);
+	c = lerp(c, mouthWater, mouthTint);
+	c += _HexShoreFoamColor.rgb *
+		riverMouthFoam * saturate(_HexRiverMouth.w) * 0.24;
 	c = HexCivGrade(c, WorldPosition, 0.66 + waves * 0.2, 0.48);
 	c = ApplyHFEditorOverlay(c, grid);
 

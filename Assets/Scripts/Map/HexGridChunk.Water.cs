@@ -171,7 +171,8 @@ public partial class HexGridChunk
 			center2 + HexMetrics.GetSecondSolidCorner(direction.Opposite()),
 			center2 + HexMetrics.GetFirstSolidCorner(direction.Opposite()));
 
-		if (cell.HasRiverThroughEdge(direction))
+		if (!useHFOriginalSurface &&
+			cell.HasLegacyRiverThroughEdge(direction))
 		{
 			TriangulateEstuary(
 				e1, e2, cell.HasIncomingRiverThroughEdge(direction), indices);

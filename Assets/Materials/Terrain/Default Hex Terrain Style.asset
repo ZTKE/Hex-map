@@ -23,7 +23,7 @@ MonoBehaviour:
   desertMountainHeight: 4.45
   desertMountainWidth: 1.08
   terrainSurfaceAtlas: {fileID: 2800000, guid: 654b92dcd6b248cfa7b804bfb4bf5020, type: 3}
-  terrainSurfaceBlend: 0.74
+  terrainSurfaceBlend: 0
   terrainSurfaceTiling: 0.018
   terrainMacroVariation: 0.075
   hfTerrainMixer: {fileID: 2800000, guid: 48b6be89a0124ac49bfff8bd154a081a, type: 3}
@@ -72,6 +72,14 @@ MonoBehaviour:
   drySand: {r: 0.78, g: 0.63, b: 0.36, a: 1}
   riverWater: {r: 0.035, g: 0.25, b: 0.29, a: 1}
   riverBank: {r: 0.43, g: 0.32, b: 0.18, a: 1}
+  riverFlowSpeed: 0.72
+  riverWaveFrequency: 2.4
+  riverWaveStrength: 0.32
+  riverSmoothness: 0.82
+  riverMouthLength: 0.95
+  riverMouthWidth: 0.28
+  riverMouthTint: 0.72
+  riverMouthFoam: 0.42
   waterStyleBlend: 0.84
   coastCliffLow: {r: 0.32, g: 0.24, b: 0.16, a: 1}
   coastCliffHigh: {r: 0.67, g: 0.58, b: 0.43, a: 1}
@@ -83,8 +91,8 @@ MonoBehaviour:
   - {r: 0.58, g: 0.64, b: 0.2, a: 1}
   - {r: 0.42, g: 0.46, b: 0.29, a: 1}
   - {r: 0.31, g: 0.46, b: 0.38, a: 1}
-  vegetationStyleBlend: 0.74
-  shaderStyleStrength: 0.82
+  vegetationStyleBlend: 0
+  shaderStyleStrength: 0
   shaderSaturation: 1.08
   shaderContrast: 1.02
   shaderPosterization: 0.13

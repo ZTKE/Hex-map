@@ -71,6 +71,11 @@ public partial class HexMapEditor
 		{
 			return;
 		}
+		if (hexGrid && hexGrid.IsOverviewMode)
+		{
+			DrawOverviewBar();
+			return;
+		}
 
 		Rect panel = GetHFPanelRect();
 		GUILayout.BeginArea(panel, GUI.skin.box);
@@ -102,6 +107,37 @@ public partial class HexMapEditor
 		GUILayout.Label(GetActiveToolHint(), GUILayout.Height(18f));
 		GUILayout.Label(GetHoverDescription(), GUILayout.Height(18f));
 		GUILayout.EndArea();
+	}
+
+	void DrawOverviewBar()
+	{
+		const float width = 660f;
+		const float height = 34f;
+		Rect bar = new(
+			Mathf.Max(8f, (Screen.width - width) * 0.5f), 8f,
+			Mathf.Min(width, Screen.width - 16f), height);
+		GUI.Box(bar, GUIContent.none);
+		GUI.Label(
+			new Rect(bar.x + 10f, bar.y + 7f, 360f, 20f),
+			"WORLD OVERVIEW  |  Zoom in to edit cells");
+		GUI.enabled = saveLoadMenu;
+		if (GUI.Button(
+			new Rect(bar.xMax - 274f, bar.y + 5f, 78f, 24f), "Save"))
+		{
+			saveLoadMenu.Open(true);
+		}
+		if (GUI.Button(
+			new Rect(bar.xMax - 190f, bar.y + 5f, 78f, 24f), "Load"))
+		{
+			saveLoadMenu.Open(false);
+		}
+		GUI.enabled = newMapMenu;
+		if (GUI.Button(
+			new Rect(bar.xMax - 106f, bar.y + 5f, 96f, 24f), "New Map"))
+		{
+			newMapMenu.Open();
+		}
+		GUI.enabled = true;
 	}
 
 	void DrawHFHeader()
@@ -330,11 +366,11 @@ public partial class HexMapEditor
 		EditorTool.RoadDraw =>
 			"Drag to draw an HF road; skipped hexes are connected automatically.",
 		EditorTool.RoadErase =>
-			"Drag across road edges to erase them; click a cell to clear its road junction.",
+			"Drag across road links to erase them; a click removes only the nearest branch.",
 		EditorTool.RiverDraw =>
-			"Drag downstream to draw an HF river; skipped hexes are connected automatically.",
+			"Drag along hex boundaries; the HF river snaps to the nearest shared edge.",
 		EditorTool.RiverErase =>
-			"Drag across river edges to erase them; click a cell to clear its river.",
+			"Drag along river boundaries to erase the nearest HF edge segment.",
 		_ => "Legacy Catlike compatibility brush."
 	};
 

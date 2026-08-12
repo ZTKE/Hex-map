@@ -68,6 +68,21 @@ public struct HexCellData
 	public byte terrainRotation;
 
 	/// <summary>
+	/// HF rivers occupy complete shared hex edges, matching HoneyFramework's
+	/// corner-to-corner river graph. The low six bits map to HexDirection.
+	/// </summary>
+	public byte hfRiverEdges;
+
+	/// <summary>
+	/// Stable political owner imported from the sphere map. Zero means ocean or
+	/// no owner. A ushort is sufficient for the source IDs and keeps the
+	/// 515,900-cell world compact.
+	/// </summary>
+	public ushort countryId;
+
+	public readonly ushort CountryId => countryId;
+
+	/// <summary>
 	/// Visual-only underwater tier: 0 dry, 1 coastal/shallow, 2 offshore/deep.
 	/// It is derived from shoreline topology and is not saved.
 	/// </summary>
@@ -167,9 +182,25 @@ public struct HexCellData
 	public readonly bool HasOutgoingRiver => flags.HasAny(HexFlags.RiverOut);
 
 	/// <summary>
-	/// Whether there is a river, either incoming, outgoing, or both.
+	/// Whether this cell contains a legacy center-river segment.
 	/// </summary>
-	public readonly bool HasRiver => flags.HasAny(HexFlags.River);
+	public readonly bool HasLegacyRiver => flags.HasAny(HexFlags.River);
+
+	/// <summary>
+	/// Whether there is either a legacy center river or an HF boundary river.
+	/// </summary>
+	public readonly bool HasRiver =>
+		HasLegacyRiver || HasHFRiver;
+
+	/// <summary>
+	/// Whether this cell owns at least one HF boundary-river segment.
+	/// </summary>
+	public readonly bool HasHFRiver => (hfRiverEdges & 0b111111) != 0;
+
+	/// <summary>
+	/// The six HF boundary-river bits used by rendering and serialization.
+	/// </summary>
+	public readonly int HFRiverEdgeMask => hfRiverEdges & 0b111111;
 
 	/// <summary>
 	/// Whether a river begins or ends in the cell.
@@ -238,7 +269,20 @@ public struct HexCellData
 	/// <param name="direction">Edge direction relative to the cell.</param>
 	/// <returns>Whether a river goes through the edge.</returns>
 	public readonly bool HasRiverThroughEdge(HexDirection direction) =>
+		HasLegacyRiverThroughEdge(direction) ||
+		HasHFRiverThroughEdge(direction);
+
+	/// <summary>
+	/// Whether a legacy center river crosses a specific cell edge.
+	/// </summary>
+	public readonly bool HasLegacyRiverThroughEdge(HexDirection direction) =>
 		flags.HasRiverIn(direction) || flags.HasRiverOut(direction);
+
+	/// <summary>
+	/// Whether an HF river lies along a specific cell boundary.
+	/// </summary>
+	public readonly bool HasHFRiverThroughEdge(HexDirection direction) =>
+		(hfRiverEdges & (1 << (int)direction)) != 0;
 
 	/// <summary>
 	/// Whether a road goes through a specific cell edge.

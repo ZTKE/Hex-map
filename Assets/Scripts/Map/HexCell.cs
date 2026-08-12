@@ -53,10 +53,14 @@ public struct HexCell
 			grid.ShaderData.ViewElevationChanged(index);
 			grid.RefreshWaterDepthsAround(index);
 			ValidateRivers();
+			if (Values.IsUnderwater)
+			{
+				RemoveRoads();
+			}
 			// HF road placement follows the rendered HF surface, not Catlike's
 			// hidden logical elevation steps. Preserve those paths when simulation
 			// elevation changes; legacy mode keeps its original slope validation.
-			if (!grid.SurfaceSampler.UsesHFOriginalSurface)
+			else if (!grid.SurfaceSampler.UsesHFOriginalSurface)
 			{
 				HexFlags flags = Flags;
 				for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
@@ -89,6 +93,10 @@ public struct HexCell
 			// directly adjacent sea cells.
 			grid.RefreshWaterDepthsAround(index);
 			ValidateRivers();
+			if (Values.IsUnderwater)
+			{
+				RemoveRoads();
+			}
 			grid.RefreshCellWithDependents(index);
 		}
 	}
@@ -174,7 +182,7 @@ public struct HexCell
 	public readonly void SetSpecialIndex (int specialIndex)
 	{
 		if (Values.SpecialIndex != specialIndex &&
-			Flags.HasNone(HexFlags.River))
+			!grid.CellData[index].HasRiver)
 		{
 			Values = Values.WithSpecialIndex(specialIndex);
 			RemoveRoads();
@@ -318,6 +326,11 @@ public struct HexCell
 	{
 		RemoveIncomingRiver();
 		RemoveOutgoingRiver();
+		for (HexDirection direction = HexDirection.NE;
+			direction <= HexDirection.NW; direction++)
+		{
+			RemoveHFRiverEdge(direction);
+		}
 	}
 
 	/// <summary>
@@ -334,6 +347,76 @@ public struct HexCell
 		{
 			RemoveOutgoingRiver();
 		}
+		RemoveHFRiverEdge(direction);
+	}
+
+	/// <summary>
+	/// Place an HF river on the complete shared boundary in a direction. Both
+	/// adjacent cells carry the bit so GPU and CPU neighborhood sampling remain
+	/// invariant regardless of which cell owns the rendered patch.
+	/// </summary>
+	public readonly void SetHFRiverEdge(HexDirection direction)
+	{
+		HexCellData data = grid.CellData[index];
+		byte bit = (byte)(1 << (int)direction);
+		bool changed = (data.hfRiverEdges & bit) == 0 ||
+			data.SpecialIndex != 0;
+		data.hfRiverEdges |= bit;
+		data.values = data.values.WithSpecialIndex(0);
+		grid.CellData[index] = data;
+
+		bool hasNeighbor = TryGetNeighbor(
+			direction, out HexCell neighbor);
+		if (data.flags.HasRoad(direction) && hasNeighbor)
+		{
+			RemoveRoad(direction);
+		}
+
+		if (hasNeighbor)
+		{
+			HexCellData neighborData = grid.CellData[neighbor.index];
+			byte oppositeBit =
+				(byte)(1 << (int)direction.Opposite());
+			changed |= (neighborData.hfRiverEdges & oppositeBit) == 0 ||
+				neighborData.SpecialIndex != 0;
+			neighborData.hfRiverEdges |= oppositeBit;
+			neighborData.values = neighborData.values.WithSpecialIndex(0);
+			grid.CellData[neighbor.index] = neighborData;
+			if (changed)
+			{
+				neighbor.Refresh();
+			}
+		}
+		if (changed)
+		{
+			Refresh();
+		}
+	}
+
+	readonly void RemoveHFRiverEdge(HexDirection direction)
+	{
+		HexCellData data = grid.CellData[index];
+		byte bit = (byte)(1 << (int)direction);
+		bool changed = (data.hfRiverEdges & bit) != 0;
+		data.hfRiverEdges &= (byte)~bit;
+		grid.CellData[index] = data;
+		if (TryGetNeighbor(direction, out HexCell neighbor))
+		{
+			HexCellData neighborData = grid.CellData[neighbor.index];
+			byte oppositeBit =
+				(byte)(1 << (int)direction.Opposite());
+			changed |= (neighborData.hfRiverEdges & oppositeBit) != 0;
+			neighborData.hfRiverEdges &= (byte)~oppositeBit;
+			grid.CellData[neighbor.index] = neighborData;
+			if (changed)
+			{
+				neighbor.Refresh();
+			}
+		}
+		if (changed)
+		{
+			Refresh();
+		}
 	}
 
 	static bool CanRiverFlow (HexValues from, HexValues to) =>
@@ -347,12 +430,11 @@ public struct HexCell
 		SetOutgoingRiver(direction, false);
 
 	/// <summary>
-	/// Set an HF river segment in the user's stroke direction. HF's rendered
-	/// channel is cut from a common authored datum, so Catlike's hidden logical
-	/// elevation must not silently reject an otherwise valid visual path.
+	/// Set an HF river segment on the complete boundary in the supplied direction.
+	/// Kept as the directional-path API used by existing editor code.
 	/// </summary>
 	public readonly void SetHFOutgoingRiver(HexDirection direction) =>
-		SetOutgoingRiver(direction, true);
+		SetHFRiverEdge(direction);
 
 	readonly void SetOutgoingRiver(
 		HexDirection direction, bool useHFPathRule)
@@ -402,7 +484,9 @@ public struct HexCell
 		HexFlags flags = Flags;
 		HexCell neighbor = GetNeighbor(direction);
 		if (
-			!flags.HasRoad(direction) && !flags.HasRiver(direction) &&
+			!flags.HasRoad(direction) &&
+			!grid.CellData[index].HasRiverThroughEdge(direction) &&
+			!Values.IsUnderwater && !neighbor.Values.IsUnderwater &&
 			Values.SpecialIndex == 0 && neighbor.Values.SpecialIndex == 0 &&
 			(useHFPathRule ||
 				Mathf.Abs(Values.Elevation - neighbor.Values.Elevation) <= 1)

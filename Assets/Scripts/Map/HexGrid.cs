@@ -9,6 +9,24 @@ using System.Collections.Generic;
 public class HexGrid : MonoBehaviour
 {
 	/// <summary>
+	/// Upper bound used by the runtime map creator. One million logical cells
+	/// stays practical on desktop while preventing accidental multi-gigabyte
+	/// allocations from malformed input or save files.
+	/// </summary>
+	public const int MaxSupportedCellCount = 1_000_000;
+
+	/// <summary>
+	/// Maps above this size use the pooled, camera-local render window.
+	/// </summary>
+	public const int ChunkStreamingCellThreshold = 10_000;
+
+	// Detailed high-altitude testing deliberately keeps real chunks visible at
+	// every zoom level. These floors also apply when Unity has restored an older
+	// in-memory scene backup whose serialized streaming values predate the mode.
+	const int detailedWorldMaximumStreamingRadius = 36;
+	const int detailedWorldActivationBudget = 8;
+
+	/// <summary>
 	/// Raised after a new map has been created or a saved map has finished
 	/// loading. Editor-only transient state must not cross this boundary.
 	/// </summary>
@@ -56,6 +74,36 @@ public class HexGrid : MonoBehaviour
 
 	HexGridChunk[] chunks;
 
+	readonly Stack<HexGridChunk> chunkPool = new();
+	readonly HashSet<int> activeChunkIndices = new();
+	readonly HashSet<int> desiredChunkIndices = new();
+	readonly List<int> chunkChangeBuffer = new();
+	readonly List<int> pendingChunkActivations = new();
+	readonly List<int> pendingInteractionActivations = new();
+
+	[SerializeField, Min(1)]
+	int streamingChunkRadius = 7;
+
+	[SerializeField, Min(1)]
+	int maximumStreamingChunkRadius = 8;
+
+	[SerializeField, Min(0)]
+	int streamingColliderRadius = 2;
+
+	[SerializeField, Min(1)]
+	int chunkActivationsPerFrame = 2;
+
+	bool usesChunkStreaming;
+	bool gridUIVisible = true;
+	bool overviewMode;
+	bool overviewDirty = true;
+	int pendingActivationCursor;
+	int pendingInteractionCursor;
+	int visibleCenterChunkX = int.MinValue;
+	int visibleCenterChunkZ = int.MinValue;
+	int visibleChunkRadiusX = -1;
+	int visibleChunkRadiusZ = -1;
+
 	/// <summary>
 	/// Bundled cell data.
 	/// </summary>
@@ -80,9 +128,8 @@ public class HexGrid : MonoBehaviour
 
 	int[] cellVisibility;
 
-	HexGridChunk[] cellGridChunks;
-
-	RectTransform[] cellUIRects;
+	readonly Dictionary<int, string> cellLabelTexts = new();
+	readonly Dictionary<int, Color> cellHighlights = new();
 
 	/// <summary>
 	/// The <see cref="HexCellShaderData"/> container
@@ -109,12 +156,97 @@ public class HexGrid : MonoBehaviour
 
 	int currentCenterColumnIndex = -1;
 
+	/// <summary>
+	/// Whether this map is only instantiating render chunks around the camera.
+	/// </summary>
+	public bool UsesChunkStreaming => usesChunkStreaming;
+
+	/// <summary>
+	/// Number of render chunks that currently exist in the scene.
+	/// </summary>
+	public int ActiveChunkCount => activeChunkIndices.Count;
+
+	/// <summary>
+	/// Whether the streamed map is currently using only its cheap overview.
+	/// </summary>
+	public bool IsOverviewMode => overviewMode;
+
+	public int PoliticalBorderSegmentCount => overview ?
+		overview.PoliticalBorderSegmentCount : 0;
+
+	/// <summary>
+	/// Whether cells on this map carry political ownership and a color palette.
+	/// </summary>
+	public bool HasPoliticalData => countryPalette != null &&
+		countryPalette.Length > 1;
+
+	/// <summary>
+	/// Install the ID-indexed political palette used by the overview. Cell IDs
+	/// remain authoritative; the palette is presentation data.
+	/// </summary>
+	public void SetCountryPalette(Color32[] palette)
+	{
+		countryPalette = palette != null && palette.Length > 1 ?
+			(Color32[])palette.Clone() : null;
+		overviewDirty = true;
+	}
+
+	public bool TryGetCountryColor(ushort countryId, out Color32 color)
+	{
+		if (countryId != 0 && countryPalette != null &&
+			countryId < countryPalette.Length)
+		{
+			color = countryPalette[countryId];
+			return color.a != 0;
+		}
+		color = default;
+		return false;
+	}
+
+	public ushort GetCountryId(int cellIndex) =>
+		CellData[cellIndex].CountryId;
+
+	/// <summary>
+	/// Change one cell's political owner. The high-altitude texture and border
+	/// contours are rebuilt the next time overview data is requested.
+	/// </summary>
+	public bool SetCountryId(int cellIndex, ushort countryId)
+	{
+		if (CellData == null || cellIndex < 0 || cellIndex >= CellData.Length ||
+			(countryId != 0 && (countryPalette == null ||
+				countryId >= countryPalette.Length ||
+				countryPalette[countryId].a == 0)))
+		{
+			return false;
+		}
+		HexCellData data = CellData[cellIndex];
+		if (data.IsUnderwater && countryId != 0)
+		{
+			return false;
+		}
+		if (data.countryId != countryId)
+		{
+			data.countryId = countryId;
+			CellData[cellIndex] = data;
+			overviewDirty = true;
+		}
+		return true;
+	}
+
+	public void ClearPoliticalData()
+	{
+		countryPalette = null;
+		overviewDirty = true;
+	}
+
 #pragma warning disable IDE0044 // Add readonly modifier
 	List<HexUnit> units = new();
 #pragma warning restore IDE0044 // Add readonly modifier
 
 	HexCellShaderData cellShaderData;
 	HexSurfaceSampler surfaceSampler;
+	HexMapOverview overview;
+	Color32[] countryPalette;
 
 	void Awake()
 	{
@@ -126,6 +258,11 @@ public class HexGrid : MonoBehaviour
 		surfaceSampler = new HexSurfaceSampler(this);
 		cellShaderData = gameObject.AddComponent<HexCellShaderData>();
 		cellShaderData.Grid = this;
+		overview = GetComponent<HexMapOverview>();
+		if (!overview)
+		{
+			overview = gameObject.AddComponent<HexMapOverview>();
+		}
 		CreateMap(CellCountX, CellCountZ, Wrapping);
 	}
 
@@ -168,21 +305,25 @@ public class HexGrid : MonoBehaviour
 	/// <param name="x">X size of the map.</param>
 	/// <param name="z">Z size of the map.</param>
 	/// <param name="wrapping">Whether the map wraps east-west.</param>
-	/// <returns>Whether the map was successfully created. It fails when the X
-	/// or Z size is not a multiple of the respective chunk size.</returns>
+	/// <returns>Whether the map was successfully created.</returns>
 	public bool CreateMap(int x, int z, bool wrapping)
 	{
-		if (
-			x <= 0 || x % HexMetrics.chunkSizeX != 0 ||
-			z <= 0 || z % HexMetrics.chunkSizeZ != 0
-		)
+		if (!TryValidateMapSize(x, z, out string validationMessage))
 		{
-			Debug.LogError("Unsupported map size.");
+			Debug.LogError(validationMessage);
 			return false;
 		}
 
 		ClearPath();
 		ClearUnits();
+		if (overview)
+		{
+			overview.SetVisible(false);
+		}
+		ClearPoliticalData();
+		overviewMode = false;
+		overviewDirty = true;
+		InvalidateStreamingWindow();
 		if (columns != null)
 		{
 			for (int i = 0; i < columns.Length; i++)
@@ -190,18 +331,77 @@ public class HexGrid : MonoBehaviour
 				Destroy(columns[i].gameObject);
 			}
 		}
+		while (chunkPool.Count > 0)
+		{
+			HexGridChunk pooledChunk = chunkPool.Pop();
+			if (pooledChunk)
+			{
+				Destroy(pooledChunk.gameObject);
+			}
+		}
+		activeChunkIndices.Clear();
+		desiredChunkIndices.Clear();
+		chunkChangeBuffer.Clear();
+		pendingChunkActivations.Clear();
+		pendingActivationCursor = 0;
+		pendingInteractionActivations.Clear();
+		pendingInteractionCursor = 0;
+		// CreateCells updates logical positions before the replacement chunk array
+		// exists. Clear stale references from the previous map so UI lookup cannot
+		// index the old array with the new chunk dimensions.
+		chunks = null;
+		columns = null;
 
 		CellCountX = x;
 		CellCountZ = z;
 		Wrapping = wrapping;
 		currentCenterColumnIndex = -1;
 		HexMetrics.wrapSize = wrapping ? CellCountX : 0;
-		chunkCountX = CellCountX / HexMetrics.chunkSizeX;
-		chunkCountZ = CellCountZ / HexMetrics.chunkSizeZ;
+		chunkCountX = Mathf.CeilToInt(
+			CellCountX / (float)HexMetrics.chunkSizeX);
+		chunkCountZ = Mathf.CeilToInt(
+			CellCountZ / (float)HexMetrics.chunkSizeZ);
+		usesChunkStreaming = (long)CellCountX * CellCountZ >
+			ChunkStreamingCellThreshold;
 		cellShaderData.Initialize(CellCountX, CellCountZ);
-		CreateChunks();
 		CreateCells();
+		CreateChunks();
 		MapReset?.Invoke();
+		return true;
+	}
+
+	/// <summary>
+	/// Validate a requested logical map size before allocating its data.
+	/// </summary>
+	public static bool TryValidateMapSize(
+		int x, int z, out string validationMessage)
+	{
+		if (x <= 0 || z <= 0)
+		{
+			validationMessage = "Map width and height must both be positive.";
+			return false;
+		}
+
+		long cellCount = (long)x * z;
+		if (cellCount > MaxSupportedCellCount)
+		{
+			validationMessage =
+				$"Map contains {cellCount:N0} cells; the supported maximum is " +
+				$"{MaxSupportedCellCount:N0}.";
+			return false;
+		}
+
+		int maximumTextureSize = SystemInfo.maxTextureSize;
+		if (maximumTextureSize > 0 &&
+			(x > maximumTextureSize || z > maximumTextureSize))
+		{
+			validationMessage =
+				$"This device supports at most {maximumTextureSize:N0} cells " +
+				"along either map dimension.";
+			return false;
+		}
+
+		validationMessage = null;
 		return true;
 	}
 
@@ -215,13 +415,11 @@ public class HexGrid : MonoBehaviour
 		}
 
 		chunks = new HexGridChunk[chunkCountX * chunkCountZ];
-		for (int z = 0, i = 0; z < chunkCountZ; z++)
+		if (!usesChunkStreaming)
 		{
-			for (int x = 0; x < chunkCountX; x++)
+			for (int i = 0; i < chunks.Length; i++)
 			{
-				HexGridChunk chunk = chunks[i++] = Instantiate(chunkPrefab);
-				chunk.transform.SetParent(columns[x], false);
-				chunk.Grid = this;
+				ActivateChunk(i);
 			}
 		}
 	}
@@ -230,11 +428,11 @@ public class HexGrid : MonoBehaviour
 	{
 		CellData = new HexCellData[CellCountZ * CellCountX];
 		CellPositions = new Vector3[CellData.Length];
-		cellUIRects = new RectTransform[CellData.Length];
-		cellGridChunks = new HexGridChunk[CellData.Length];
 		CellUnits = new HexUnit[CellData.Length];
 		searchData = new HexCellSearchData[CellData.Length];
 		cellVisibility = new int[CellData.Length];
+		cellLabelTexts.Clear();
+		cellHighlights.Clear();
 
 		for (int z = 0, i = 0; z < CellCountZ; z++)
 		{
@@ -378,9 +576,23 @@ public class HexGrid : MonoBehaviour
 	/// <param name="visible">Whether the UI should be visibile.</param>
 	public void ShowUI(bool visible)
 	{
+		gridUIVisible = visible;
 		for (int i = 0; i < chunks.Length; i++)
 		{
-			chunks[i].ShowUI(visible);
+			if (chunks[i])
+			{
+				chunks[i].ShowUI(visible);
+			}
+		}
+	}
+
+	void Update()
+	{
+		if (usesChunkStreaming && !overviewMode)
+		{
+			ProcessPendingChunkActivations(Mathf.Max(
+				chunkActivationsPerFrame, detailedWorldActivationBudget));
+			ProcessPendingInteractionActivations(1);
 		}
 	}
 
@@ -404,22 +616,422 @@ public class HexGrid : MonoBehaviour
 			cell.Flags.With(HexFlags.Explorable) :
 			cell.Flags.Without(HexFlags.Explorable);
 
-		Text label = Instantiate(cellLabelPrefab);
-		label.rectTransform.anchoredPosition =
-			new Vector2(position.x, position.z);
-		RectTransform rect = cellUIRects[i] = label.rectTransform;
-
 		cell.Values = cell.Values.WithElevation(0);
 		RefreshCellPosition(i);
+	}
 
-		int chunkX = x / HexMetrics.chunkSizeX;
-		int chunkZ = z / HexMetrics.chunkSizeZ;
-		HexGridChunk chunk = chunks[chunkX + chunkZ * chunkCountX];
+	/// <summary>
+	/// Select high-altitude overview rendering or the camera-local detailed
+	/// window. When overview is not requested it is fully hidden; empty space
+	/// during activation is intentional because only real chunks may be shown.
+	/// </summary>
+	public void UpdateCameraView(
+		Vector3 cameraWorldPosition, bool requestOverview,
+		Vector2Int requestedChunkRadii = default)
+	{
+		if (!usesChunkStreaming)
+		{
+			if (overview)
+			{
+				overview.SetVisible(false);
+			}
+			return;
+		}
+		if (requestOverview && overviewMode && !overviewDirty)
+		{
+			return;
+		}
 
-		int localX = x - chunkX * HexMetrics.chunkSizeX;
-		int localZ = z - chunkZ * HexMetrics.chunkSizeZ;
-		cellGridChunks[i] = chunk;
-		chunk.AddCell(localX + localZ * HexMetrics.chunkSizeX, i, rect);
+		if (requestOverview)
+		{
+			EnsureOverview();
+			overview.SetVisible(true);
+			if (!overviewMode)
+			{
+				overviewMode = true;
+				ReleaseAllActiveChunks();
+			}
+			return;
+		}
+		if (overview)
+		{
+			overview.SetVisible(false);
+		}
+
+		if (overviewMode)
+		{
+			overviewMode = false;
+			InvalidateStreamingWindow();
+			Vector3 localPosition =
+				transform.InverseTransformPoint(cameraWorldPosition);
+			// Columns are deliberately left untouched while the cheap overview is
+			// active. Recenter them once when detailed rendering resumes.
+			currentCenterColumnIndex = -1;
+			CenterMap(localPosition.x);
+		}
+		UpdateVisibleChunks(cameraWorldPosition, requestedChunkRadii);
+	}
+
+	void EnsureOverview()
+	{
+		if (!overview)
+		{
+			overview = GetComponent<HexMapOverview>();
+			if (!overview)
+			{
+				overview = gameObject.AddComponent<HexMapOverview>();
+			}
+		}
+		if (!overviewDirty)
+		{
+			return;
+		}
+		overview.Rebuild(this);
+		overviewDirty = false;
+	}
+
+	/// <summary>
+	/// Keep only chunks near the camera instantiated for large maps. Logical cell
+	/// data remains resident; render objects and cell labels are pooled.
+	/// </summary>
+	/// <param name="cameraWorldPosition">Camera rig position in world space.</param>
+	public void UpdateVisibleChunks(
+		Vector3 cameraWorldPosition, Vector2Int requestedChunkRadii = default)
+	{
+		if (!usesChunkStreaming || overviewMode || chunks == null ||
+			chunks.Length == 0)
+		{
+			return;
+		}
+
+		Vector3 localPosition = transform.InverseTransformPoint(cameraWorldPosition);
+		HexCoordinates coordinates = HexCoordinates.FromPosition(localPosition);
+		int centerZ = coordinates.Z;
+		int centerX = coordinates.X + centerZ / 2;
+		int centerChunkX = Mathf.FloorToInt(
+			centerX / (float)HexMetrics.chunkSizeX);
+		int centerChunkZ = Mathf.FloorToInt(
+			centerZ / (float)HexMetrics.chunkSizeZ);
+		int renderRadiusX = requestedChunkRadii.x > 0 ?
+			Mathf.Max(streamingChunkRadius, requestedChunkRadii.x) :
+			streamingChunkRadius;
+		int renderRadiusZ = requestedChunkRadii.y > 0 ?
+			Mathf.Max(streamingChunkRadius, requestedChunkRadii.y) :
+			streamingChunkRadius;
+		int maximumRadius = Mathf.Max(
+			detailedWorldMaximumStreamingRadius,
+			maximumStreamingChunkRadius);
+		renderRadiusX = Mathf.Clamp(renderRadiusX, 1, maximumRadius);
+		renderRadiusZ = Mathf.Clamp(renderRadiusZ, 1, maximumRadius);
+
+		if (centerChunkX == visibleCenterChunkX &&
+			centerChunkZ == visibleCenterChunkZ &&
+			renderRadiusX == visibleChunkRadiusX &&
+			renderRadiusZ == visibleChunkRadiusZ)
+		{
+			return;
+		}
+		visibleCenterChunkX = centerChunkX;
+		visibleCenterChunkZ = centerChunkZ;
+		visibleChunkRadiusX = renderRadiusX;
+		visibleChunkRadiusZ = renderRadiusZ;
+
+		desiredChunkIndices.Clear();
+		for (int zOffset = -renderRadiusZ;
+			zOffset <= renderRadiusZ; zOffset++)
+		{
+			int z = centerChunkZ + zOffset;
+			if (z < 0 || z >= chunkCountZ)
+			{
+				continue;
+			}
+			for (int xOffset = -renderRadiusX;
+				xOffset <= renderRadiusX; xOffset++)
+			{
+				int x = centerChunkX + xOffset;
+				if (Wrapping)
+				{
+					x %= chunkCountX;
+					if (x < 0)
+					{
+						x += chunkCountX;
+					}
+				}
+				else if (x < 0 || x >= chunkCountX)
+				{
+					continue;
+				}
+				desiredChunkIndices.Add(x + z * chunkCountX);
+			}
+		}
+
+		chunkChangeBuffer.Clear();
+		foreach (int chunkIndex in activeChunkIndices)
+		{
+			if (!desiredChunkIndices.Contains(chunkIndex))
+			{
+				chunkChangeBuffer.Add(chunkIndex);
+			}
+		}
+		for (int i = 0; i < chunkChangeBuffer.Count; i++)
+		{
+			ReleaseChunk(chunkChangeBuffer[i]);
+		}
+
+		RebuildPendingChunkActivations();
+		UpdateChunkInteractions();
+		ProcessPendingChunkActivations(Mathf.Max(
+			chunkActivationsPerFrame, detailedWorldActivationBudget));
+		ProcessPendingInteractionActivations(1);
+	}
+
+	void RebuildPendingChunkActivations()
+	{
+		pendingChunkActivations.Clear();
+		pendingActivationCursor = 0;
+		foreach (int chunkIndex in desiredChunkIndices)
+		{
+			if (!chunks[chunkIndex])
+			{
+				pendingChunkActivations.Add(chunkIndex);
+			}
+		}
+		pendingChunkActivations.Sort((a, b) =>
+			GetChunkDistanceSquared(a).CompareTo(GetChunkDistanceSquared(b)));
+	}
+
+	int GetChunkDistanceSquared(int chunkIndex)
+	{
+		int x = chunkIndex % chunkCountX;
+		int z = chunkIndex / chunkCountX;
+		int xDistance = Mathf.Abs(x - visibleCenterChunkX);
+		if (Wrapping)
+		{
+			xDistance = Mathf.Min(xDistance, chunkCountX - xDistance);
+		}
+		int zDistance = Mathf.Abs(z - visibleCenterChunkZ);
+		return xDistance * xDistance + zDistance * zDistance;
+	}
+
+	bool ShouldChunkHaveInteraction(int chunkIndex)
+	{
+		if (streamingColliderRadius < 0)
+		{
+			return false;
+		}
+		int x = chunkIndex % chunkCountX;
+		int z = chunkIndex / chunkCountX;
+		int xDistance = Mathf.Abs(x - visibleCenterChunkX);
+		if (Wrapping)
+		{
+			xDistance = Mathf.Min(xDistance, chunkCountX - xDistance);
+		}
+		return xDistance <= streamingColliderRadius &&
+			Mathf.Abs(z - visibleCenterChunkZ) <= streamingColliderRadius;
+	}
+
+	void UpdateChunkInteractions()
+	{
+		pendingInteractionActivations.Clear();
+		pendingInteractionCursor = 0;
+		foreach (int chunkIndex in activeChunkIndices)
+		{
+			HexGridChunk chunk = chunks[chunkIndex];
+			if (!chunk)
+			{
+				continue;
+			}
+			bool shouldInteract = ShouldChunkHaveInteraction(chunkIndex);
+			if (!shouldInteract)
+			{
+				chunk.SetInteractionEnabled(false);
+			}
+			else if (!chunk.InteractionEnabled)
+			{
+				pendingInteractionActivations.Add(chunkIndex);
+			}
+		}
+		pendingInteractionActivations.Sort((a, b) =>
+			GetChunkDistanceSquared(a).CompareTo(GetChunkDistanceSquared(b)));
+	}
+
+	void ProcessPendingInteractionActivations(int budget)
+	{
+		budget = Mathf.Max(1, budget);
+		while (budget-- > 0 &&
+			pendingInteractionCursor < pendingInteractionActivations.Count)
+		{
+			int chunkIndex =
+				pendingInteractionActivations[pendingInteractionCursor++];
+			HexGridChunk chunk = chunks[chunkIndex];
+			if (chunk && ShouldChunkHaveInteraction(chunkIndex))
+			{
+				chunk.SetInteractionEnabled(true);
+			}
+		}
+		if (pendingInteractionCursor >= pendingInteractionActivations.Count)
+		{
+			pendingInteractionActivations.Clear();
+			pendingInteractionCursor = 0;
+		}
+	}
+
+	void ProcessPendingChunkActivations(int budget)
+	{
+		budget = Mathf.Max(1, budget);
+		while (budget-- > 0 &&
+			pendingActivationCursor < pendingChunkActivations.Count)
+		{
+			int chunkIndex =
+				pendingChunkActivations[pendingActivationCursor++];
+			if (desiredChunkIndices.Contains(chunkIndex) && !chunks[chunkIndex])
+			{
+				ActivateChunk(chunkIndex);
+			}
+		}
+		if (pendingActivationCursor >= pendingChunkActivations.Count)
+		{
+			pendingChunkActivations.Clear();
+			pendingActivationCursor = 0;
+		}
+	}
+
+	void ReleaseAllActiveChunks()
+	{
+		chunkChangeBuffer.Clear();
+		foreach (int chunkIndex in activeChunkIndices)
+		{
+			chunkChangeBuffer.Add(chunkIndex);
+		}
+		for (int i = 0; i < chunkChangeBuffer.Count; i++)
+		{
+			ReleaseChunk(chunkChangeBuffer[i]);
+		}
+		desiredChunkIndices.Clear();
+		pendingChunkActivations.Clear();
+		pendingActivationCursor = 0;
+		pendingInteractionActivations.Clear();
+		pendingInteractionCursor = 0;
+		InvalidateStreamingWindow();
+	}
+
+	void InvalidateStreamingWindow()
+	{
+		visibleCenterChunkX = int.MinValue;
+		visibleCenterChunkZ = int.MinValue;
+		visibleChunkRadiusX = -1;
+		visibleChunkRadiusZ = -1;
+	}
+
+	void ActivateChunk(int chunkIndex)
+	{
+		int chunkX = chunkIndex % chunkCountX;
+		int chunkZ = chunkIndex / chunkCountX;
+		HexGridChunk chunk;
+		if (chunkPool.Count > 0)
+		{
+			chunk = chunkPool.Pop();
+			chunk.gameObject.SetActive(true);
+		}
+		else
+		{
+			chunk = Instantiate(chunkPrefab);
+		}
+
+		chunk.transform.SetParent(columns[chunkX], false);
+		chunk.Grid = this;
+		chunk.SetInteractionEnabled(
+			!usesChunkStreaming || ShouldChunkHaveInteraction(chunkIndex), false);
+		chunks[chunkIndex] = chunk;
+		activeChunkIndices.Add(chunkIndex);
+
+		for (int localZ = 0; localZ < HexMetrics.chunkSizeZ; localZ++)
+		{
+			int z = chunkZ * HexMetrics.chunkSizeZ + localZ;
+			for (int localX = 0; localX < HexMetrics.chunkSizeX; localX++)
+			{
+				int x = chunkX * HexMetrics.chunkSizeX + localX;
+				int localIndex = localX + localZ * HexMetrics.chunkSizeX;
+				int cellIndex = x < CellCountX && z < CellCountZ ?
+					x + z * CellCountX : -1;
+				RectTransform cellUI = chunk.AddCell(
+					localIndex, cellIndex, cellLabelPrefab);
+				if (cellIndex < 0)
+				{
+					continue;
+				}
+				Vector3 position = CellPositions[cellIndex];
+				cellUI.anchoredPosition = new Vector2(position.x, position.z);
+				RefreshCellPosition(cellIndex);
+				ApplyCellUIState(cellIndex, cellUI);
+			}
+		}
+		chunk.ShowUI(gridUIVisible);
+		chunk.Refresh();
+	}
+
+	void ReleaseChunk(int chunkIndex)
+	{
+		HexGridChunk chunk = chunks[chunkIndex];
+		if (!chunk)
+		{
+			return;
+		}
+		chunks[chunkIndex] = null;
+		activeChunkIndices.Remove(chunkIndex);
+		chunk.SetInteractionEnabled(false, false);
+		chunk.UnbindCells();
+		chunk.transform.SetParent(transform, false);
+		chunk.gameObject.SetActive(false);
+		chunkPool.Push(chunk);
+	}
+
+	HexGridChunk GetChunkForCell(int cellIndex)
+	{
+		if (cellIndex < 0 || cellIndex >= CellData.Length || chunks == null)
+		{
+			return null;
+		}
+		int z = cellIndex / CellCountX;
+		int x = cellIndex - z * CellCountX;
+		int chunkIndex =
+			x / HexMetrics.chunkSizeX +
+			z / HexMetrics.chunkSizeZ * chunkCountX;
+		return chunkIndex >= 0 && chunkIndex < chunks.Length ?
+			chunks[chunkIndex] : null;
+	}
+
+	bool TryGetCellUI(int cellIndex, out RectTransform cellUI)
+	{
+		HexGridChunk chunk = GetChunkForCell(cellIndex);
+		if (!chunk)
+		{
+			cellUI = null;
+			return false;
+		}
+		int z = cellIndex / CellCountX;
+		int x = cellIndex - z * CellCountX;
+		int localIndex = x % HexMetrics.chunkSizeX +
+			z % HexMetrics.chunkSizeZ * HexMetrics.chunkSizeX;
+		cellUI = chunk.GetCellUI(localIndex, cellIndex);
+		return cellUI;
+	}
+
+	void ApplyCellUIState(int cellIndex, RectTransform cellUI)
+	{
+		Text label = cellUI.GetComponent<Text>();
+		label.text = cellLabelTexts.TryGetValue(cellIndex, out string text) ?
+			text : null;
+		Image highlight = cellUI.GetChild(0).GetComponent<Image>();
+		if (cellHighlights.TryGetValue(cellIndex, out Color color))
+		{
+			highlight.color = color;
+			highlight.enabled = true;
+		}
+		else
+		{
+			highlight.enabled = false;
+		}
 	}
 
 	/// <summary>
@@ -428,7 +1040,12 @@ public class HexGrid : MonoBehaviour
 	/// <param name="cellIndex">Cell index.</param>
 	public void RefreshCell(int cellIndex)
 	{
-		cellGridChunks[cellIndex].Refresh();
+		overviewDirty = true;
+		HexGridChunk chunk = GetChunkForCell(cellIndex);
+		if (chunk)
+		{
+			chunk.Refresh();
+		}
 		cellShaderData.RefreshTerrainShapeWithDependents(cellIndex);
 	}
 
@@ -461,8 +1078,7 @@ public class HexGrid : MonoBehaviour
 	/// </summary>
 	public void RefreshCellUISurfacePosition(int cellIndex)
 	{
-		RectTransform rectTransform = cellUIRects[cellIndex];
-		if (!rectTransform)
+		if (!TryGetCellUI(cellIndex, out RectTransform rectTransform))
 		{
 			return;
 		}
@@ -477,16 +1093,20 @@ public class HexGrid : MonoBehaviour
 	/// <param name="cellIndex">Cell index.</param>
 	public void RefreshCellWithDependents (int cellIndex)
 	{
+		overviewDirty = true;
 		cellShaderData.RefreshTerrainShapeWithDependents(cellIndex);
-		HexGridChunk chunk = cellGridChunks[cellIndex];
-		chunk.Refresh();
+		HexGridChunk chunk = GetChunkForCell(cellIndex);
+		if (chunk)
+		{
+			chunk.Refresh();
+		}
 		HexCoordinates coordinates = CellData[cellIndex].coordinates;
 		for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
 		{
 			if (TryGetCellIndex(coordinates.Step(d), out int neighborIndex))
 			{
-				HexGridChunk neighborChunk = cellGridChunks[neighborIndex];
-				if (chunk != neighborChunk)
+				HexGridChunk neighborChunk = GetChunkForCell(neighborIndex);
+				if (neighborChunk && chunk != neighborChunk)
 				{
 					neighborChunk.Refresh();
 				}
@@ -515,10 +1135,12 @@ public class HexGrid : MonoBehaviour
 		// all intentional hills and mountains.
 		CellPositions[cellIndex] = position;
 
-		RectTransform rectTransform = cellUIRects[cellIndex];
-		Vector3 uiPosition = rectTransform.localPosition;
-		uiPosition.z = -position.y;
-		rectTransform.localPosition = uiPosition;
+		if (TryGetCellUI(cellIndex, out RectTransform rectTransform))
+		{
+			Vector3 uiPosition = rectTransform.localPosition;
+			uiPosition.z = -position.y;
+			rectTransform.localPosition = uiPosition;
+		}
 	}
 
 	/// <summary>
@@ -577,10 +1199,96 @@ public class HexGrid : MonoBehaviour
 	}
 
 	/// <summary>
+	/// Add one HF-only segment beyond a dry river's coastline crossing. The
+	/// legacy river flags deliberately stop at the first water cell, so this
+	/// extension can be shaded on the water surface without carving the seabed or
+	/// changing river gameplay.
+	/// </summary>
+	/// <param name="landCellIndex">Last dry cell of the river.</param>
+	/// <returns>Whether a shallow-water continuation could be added.</returns>
+	public bool ExtendHFRiverMouth(int landCellIndex)
+	{
+		if ((uint)landCellIndex >= (uint)CellData.Length)
+		{
+			return false;
+		}
+
+		HexCellData land = CellData[landCellIndex];
+		if (land.IsUnderwater ||
+			!land.HasIncomingRiver || !land.HasOutgoingRiver)
+		{
+			return false;
+		}
+
+		HexDirection riverOut = land.OutgoingRiver;
+		if (!TryGetCellIndex(
+			land.coordinates.Step(riverOut), out int waterCellIndex))
+		{
+			return false;
+		}
+		HexCellData water = CellData[waterCellIndex];
+		if (!water.IsUnderwater)
+		{
+			return false;
+		}
+
+		HexDirection shoreEdge = riverOut.Opposite();
+		HexDirection continuation;
+		if (land.IncomingRiver == riverOut.Previous())
+		{
+			continuation = shoreEdge.Next();
+		}
+		else if (land.IncomingRiver == riverOut.Next())
+		{
+			continuation = shoreEdge.Previous();
+		}
+		else
+		{
+			return false;
+		}
+
+		if (!TryGetCellIndex(
+			water.coordinates.Step(continuation), out int nextWaterCellIndex))
+		{
+			return false;
+		}
+		HexCellData nextWater = CellData[nextWaterCellIndex];
+		if (!nextWater.IsUnderwater)
+		{
+			return false;
+		}
+
+		water.hfRiverEdges |= (byte)(
+			(1 << (int)shoreEdge) | (1 << (int)continuation));
+		nextWater.hfRiverEdges |=
+			(byte)(1 << (int)continuation.Opposite());
+		CellData[waterCellIndex] = water;
+		CellData[nextWaterCellIndex] = nextWater;
+		return true;
+	}
+
+	/// <summary>
+	/// Restore HF-only mouth continuations for loaded maps, including saves made
+	/// before river-mouth surface shading was introduced.
+	/// </summary>
+	void RebuildHFRiverMouthExtensions()
+	{
+		for (int i = 0; i < CellData.Length; i++)
+		{
+			HexCellData cell = CellData[i];
+			if (!cell.IsUnderwater && cell.HasOutgoingRiver)
+			{
+				ExtendHFRiverMouth(i);
+			}
+		}
+	}
+
+	/// <summary>
 	/// Refresh all cells, to be done after generating a map.
 	/// </summary>
 	public void RefreshAllCells()
 	{
+		overviewDirty = true;
 		RefreshWaterDepths();
 		for (int i = 0; i < CellData.Length; i++)
 		{
@@ -599,7 +1307,10 @@ public class HexGrid : MonoBehaviour
 	{
 		for (int i = 0; i < chunks.Length; i++)
 		{
-			chunks[i].Refresh();
+			if (chunks[i])
+			{
+				chunks[i].Refresh();
+			}
 		}
 	}
 
@@ -612,6 +1323,18 @@ public class HexGrid : MonoBehaviour
 		writer.Write(CellCountX);
 		writer.Write(CellCountZ);
 		writer.Write(Wrapping);
+		writer.Write(HasPoliticalData);
+		int paletteLength = HasPoliticalData ?
+			Mathf.Min(countryPalette.Length, ushort.MaxValue) : 0;
+		writer.Write((ushort)paletteLength);
+		for (int i = 0; i < paletteLength; i++)
+		{
+			Color32 color = countryPalette[i];
+			writer.Write(color.r);
+			writer.Write(color.g);
+			writer.Write(color.b);
+			writer.Write(color.a);
+		}
 
 		for (int i = 0; i < CellData.Length; i++)
 		{
@@ -623,6 +1346,8 @@ public class HexGrid : MonoBehaviour
 			writer.Write((byte)Mathf.Clamp(data.VegetationDensity, 0, 100));
 			writer.Write((byte)data.vegetationTint);
 			writer.Write((byte)data.TerrainRotation);
+			writer.Write((byte)data.HFRiverEdgeMask);
+			writer.Write(data.CountryId);
 		}
 
 		writer.Write(units.Count);
@@ -641,6 +1366,7 @@ public class HexGrid : MonoBehaviour
 	{
 		ClearPath();
 		ClearUnits();
+		ClearPoliticalData();
 		int x = 20, z = 15;
 		if (header >= 1)
 		{
@@ -648,6 +1374,26 @@ public class HexGrid : MonoBehaviour
 			z = reader.ReadInt32();
 		}
 		bool wrapping = header >= 5 && reader.ReadBoolean();
+		bool hasPoliticalData = header >= 10 && reader.ReadBoolean();
+		Color32[] loadedCountryPalette = null;
+		if (header >= 11)
+		{
+			int paletteLength = reader.ReadUInt16();
+			if (hasPoliticalData && paletteLength > 1)
+			{
+				loadedCountryPalette = new Color32[paletteLength];
+				for (int i = 0; i < paletteLength; i++)
+				{
+					loadedCountryPalette[i] = new Color32(
+						reader.ReadByte(), reader.ReadByte(),
+						reader.ReadByte(), reader.ReadByte());
+				}
+			}
+			else
+			{
+				reader.BaseStream.Seek(paletteLength * 4L, SeekOrigin.Current);
+			}
+		}
 		if (x != CellCountX || z != CellCountZ || this.Wrapping != wrapping)
 		{
 			if (!CreateMap(x, z, wrapping))
@@ -655,6 +1401,7 @@ public class HexGrid : MonoBehaviour
 				return;
 			}
 		}
+		SetCountryPalette(loadedCountryPalette);
 
 		bool originalImmediateMode = cellShaderData.ImmediateMode;
 		cellShaderData.ImmediateMode = true;
@@ -700,12 +1447,36 @@ public class HexGrid : MonoBehaviour
 					Mathf.FloorToInt(
 						HexMetrics.SampleHashGrid(CellPositions[i]).a * 6f), 0, 5);
 			}
+			if (header >= 9)
+			{
+				data.hfRiverEdges = (byte)(reader.ReadByte() & 0b111111);
+			}
+			else
+			{
+				// Older maps stored only center-crossing river directions. Preserve
+				// those selected boundaries when migrating to HF edge rivers.
+				data.hfRiverEdges = 0;
+				for (HexDirection direction = HexDirection.NE;
+					direction <= HexDirection.NW; direction++)
+				{
+					if (data.flags.HasRiver(direction))
+					{
+						data.hfRiverEdges |= (byte)(1 << (int)direction);
+					}
+				}
+			}
+			data.countryId = header >= 11 ? reader.ReadUInt16() : (ushort)0;
 			CellData[i] = data;
 		}
+		SanitizeLoadedRoads();
+		RebuildHFRiverMouthExtensions();
 		RefreshAllCells();
 		for (int i = 0; i < chunks.Length; i++)
 		{
-			chunks[i].Refresh();
+			if (chunks[i])
+			{
+				chunks[i].Refresh();
+			}
 		}
 
 		if (header >= 2)
@@ -719,6 +1490,44 @@ public class HexGrid : MonoBehaviour
 
 		cellShaderData.ImmediateMode = originalImmediateMode;
 		MapReset?.Invoke();
+	}
+
+	/// <summary>
+	/// Remove submerged, out-of-map, and one-sided road links from loaded maps.
+	/// Road flags describe a shared center-to-center connection and are valid only
+	/// when both dry owners agree on the link.
+	/// </summary>
+	void SanitizeLoadedRoads()
+	{
+		for (int i = 0; i < CellData.Length; i++)
+		{
+			HexCellData cell = CellData[i];
+			for (HexDirection direction = HexDirection.NE;
+				direction <= HexDirection.NW; direction++)
+			{
+				if (!cell.flags.HasRoad(direction))
+				{
+					continue;
+				}
+				if (!TryGetCellIndex(
+					cell.coordinates.Step(direction), out int neighborIndex))
+				{
+					cell.flags = cell.flags.WithoutRoad(direction);
+					continue;
+				}
+
+				HexCellData neighbor = CellData[neighborIndex];
+				HexDirection opposite = direction.Opposite();
+				if (cell.IsUnderwater || neighbor.IsUnderwater ||
+					!neighbor.flags.HasRoad(opposite))
+				{
+					cell.flags = cell.flags.WithoutRoad(direction);
+					neighbor.flags = neighbor.flags.WithoutRoad(opposite);
+					CellData[neighborIndex] = neighbor;
+				}
+			}
+			CellData[i] = cell;
+		}
 	}
 
 	/// <summary>
@@ -743,19 +1552,40 @@ public class HexGrid : MonoBehaviour
 		return path;
 	}
 
-	void SetLabel(int cellIndex, string text) =>
-		cellUIRects[cellIndex].GetComponent<Text>().text = text;
+	void SetLabel(int cellIndex, string text)
+	{
+		if (string.IsNullOrEmpty(text))
+		{
+			cellLabelTexts.Remove(cellIndex);
+		}
+		else
+		{
+			cellLabelTexts[cellIndex] = text;
+		}
+		if (TryGetCellUI(cellIndex, out RectTransform cellUI))
+		{
+			cellUI.GetComponent<Text>().text = text;
+		}
+	}
 
-	void DisableHighlight(int cellIndex) =>
-		cellUIRects[cellIndex].GetChild(0).GetComponent<Image>().enabled =
-			false;
+	void DisableHighlight(int cellIndex)
+	{
+		cellHighlights.Remove(cellIndex);
+		if (TryGetCellUI(cellIndex, out RectTransform cellUI))
+		{
+			cellUI.GetChild(0).GetComponent<Image>().enabled = false;
+		}
+	}
 
 	void EnableHighlight(int cellIndex, Color color)
 	{
-		Image highlight =
-			cellUIRects[cellIndex].GetChild(0).GetComponent<Image>();
-		highlight.color = color;
-		highlight.enabled = true;
+		cellHighlights[cellIndex] = color;
+		if (TryGetCellUI(cellIndex, out RectTransform cellUI))
+		{
+			Image highlight = cellUI.GetChild(0).GetComponent<Image>();
+			highlight.color = color;
+			highlight.enabled = true;
+		}
 	}
 
 	/// <summary>
@@ -1018,6 +1848,10 @@ public class HexGrid : MonoBehaviour
 	/// <param name="xPosition">X position.</param>
 	public void CenterMap(float xPosition)
 	{
+		if (overviewMode)
+		{
+			return;
+		}
 		int centerColumnIndex = (int)
 			(xPosition / (HexMetrics.innerDiameter * HexMetrics.chunkSizeX));
 		
@@ -1036,13 +1870,11 @@ public class HexGrid : MonoBehaviour
 		{
 			if (i < minColumnIndex)
 			{
-				position.x = chunkCountX *
-					(HexMetrics.innerDiameter * HexMetrics.chunkSizeX);
+				position.x = CellCountX * HexMetrics.innerDiameter;
 			}
 			else if (i > maxColumnIndex)
 			{
-				position.x = chunkCountX *
-					-(HexMetrics.innerDiameter * HexMetrics.chunkSizeX);
+				position.x = -CellCountX * HexMetrics.innerDiameter;
 			}
 			else
 			{

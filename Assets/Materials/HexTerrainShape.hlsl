@@ -61,6 +61,7 @@ struct HFReliefSurface
 	float seaInfluence;
 	float waterSurfaceY;
 	float riverDistance;
+	float2 riverUV;
 };
 
 float HFHash21(float2 p, float salt)
@@ -181,7 +182,9 @@ int HFClosestNeighborDirection(float2 outwardLocalPosition)
 HFCellShape HFLoadCell(float2 requestedOffset)
 {
 	HFCellShape cell;
-	float2 offset;
+	// Keep the invalid-cell return path fully initialized as well. Some domain
+	// shader compilers conservatively track every struct field through callers.
+	float2 offset = floor(requestedOffset + 0.5);
 	cell.valid = HFResolveOffset(requestedOffset, offset) ? 1.0 : 0.0;
 	cell.offset = offset;
 	cell.landform = 0.0;
@@ -414,24 +417,275 @@ float HFDistanceToSegment(float2 samplePoint, float2 a, float2 b)
 	return length(samplePoint - (a + ab * t));
 }
 
-float HFRiverDistance(float2 samplePoint, uint riverMask)
+void HFRiverEdgeSegment(
+	int direction, out float2 a, out float2 b, out float2 tangent)
 {
-	float distanceToRiver = 1000.0;
+	float2 outward = HFDirection(direction);
+	tangent = float2(outward.y, -outward.x);
+	float2 edgeCenter = outward * HF_SQRT3_OVER_2;
+	// A pointy-top unit hex has side length 1, so each endpoint is half a
+	// side from the edge midpoint. These are the same corner nodes used by HF.
+	a = edgeCenter - tangent * 0.5;
+	b = edgeCenter + tangent * 0.5;
+}
+
+uint HFRiverHashBits(uint hash)
+{
+	hash ^= hash >> 16u;
+	hash *= 0x7feb352du;
+	hash ^= hash >> 15u;
+	hash *= 0x846ca68bu;
+	hash ^= hash >> 16u;
+	return hash;
+}
+
+uint HFRiverEdgeHash(float2 cellOffset, int direction)
+{
+	float2 currentResolved;
+	if (!HFResolveOffset(cellOffset, currentResolved))
+	{
+		currentResolved = floor(cellOffset + 0.5);
+	}
+	float2 neighborOffset = HFNeighborOffset(cellOffset, direction);
+	float2 neighborResolved;
+	if (!HFResolveOffset(neighborOffset, neighborResolved))
+	{
+		neighborResolved = floor(neighborOffset + 0.5);
+	}
+	int2 first = int2(currentResolved);
+	int2 second = int2(neighborResolved);
+	if (second.y < first.y || (second.y == first.y && second.x < first.x))
+	{
+		int2 swap = first;
+		first = second;
+		second = swap;
+	}
+	uint hash = 2166136261u;
+	hash = (hash ^ asuint(first.x)) * 16777619u;
+	hash = (hash ^ asuint(first.y)) * 16777619u;
+	hash = (hash ^ asuint(second.x)) * 16777619u;
+	hash = (hash ^ asuint(second.y)) * 16777619u;
+	return HFRiverHashBits(hash);
+}
+
+float HFRiverHash01(uint edgeHash, uint salt)
+{
+	uint hash = HFRiverHashBits(edgeHash ^ (salt * 0x9e3779b9u));
+	return (float)(hash & 0x00ffffffu) / 16777216.0;
+}
+
+void HFRiverCurveParameters(
+	float2 cellOffset, int direction,
+	out float2 a, out float2 b, out float2 right,
+	out float bendAmplitude, out float detailAmplitude, out float phase)
+{
+	float2 localA, localB, unusedTangent;
+	HFRiverEdgeSegment(direction, localA, localB, unusedTangent);
+	float rowParity = fmod(cellOffset.y, 2.0);
+	float2 cellCenter = float2(
+		(cellOffset.x + rowParity * 0.5) * (2.0 * HF_SQRT3_OVER_2),
+		cellOffset.y * 1.5);
+	a = cellCenter + localA;
+	b = cellCenter + localB;
+	// Canonical endpoint order makes both owners of a shared edge produce the
+	// same curve, normal, and texture coordinates.
+	if (b.x < a.x - 0.0001 ||
+		(abs(b.x - a.x) <= 0.0001 && b.y < a.y))
+	{
+		float2 swap = a;
+		a = b;
+		b = swap;
+	}
+	float2 chord = b - a;
+	float2 tangent = chord / max(length(chord), 0.0001);
+	right = float2(tangent.y, -tangent.x);
+
+	uint edgeHash = HFRiverEdgeHash(cellOffset, direction);
+	float bendSide = HFRiverHash01(edgeHash, 1u) < 0.5 ? -1.0 : 1.0;
+	bendAmplitude = bendSide * lerp(
+		0.070, 0.155, HFRiverHash01(edgeHash, 2u));
+	detailAmplitude = lerp(
+		0.018, 0.040, HFRiverHash01(edgeHash, 3u));
+	phase = HFRiverHash01(edgeHash, 4u) * (2.0 * HF_PI);
+}
+
+void HFRiverCurveSample(
+	float2 a, float2 b, float2 right,
+	float bendAmplitude, float detailAmplitude, float phase, float t,
+	out float2 curvePosition, out float2 tangent)
+{
+	float oneMinusT = 1.0 - t;
+	// This envelope and its derivative are both zero at the endpoints, so the
+	// river still meets the exact shared hex corners without gaps.
+	float envelope = 16.0 * t * t * oneMinusT * oneMinusT;
+	float envelopeDerivative =
+		32.0 * t * oneMinusT * (1.0 - 2.0 * t);
+	float waveAngle = t * (2.0 * HF_PI) + phase;
+	float wave = sin(waveAngle);
+	float bend = envelope * (bendAmplitude + detailAmplitude * wave);
+	float bendDerivative =
+		envelopeDerivative * (bendAmplitude + detailAmplitude * wave) +
+		envelope * detailAmplitude * (2.0 * HF_PI) * cos(waveAngle);
+	curvePosition = lerp(a, b, t) + right * bend;
+	tangent = (b - a) + right * bendDerivative;
+}
+
+void HFRiverCurveCoordinates(
+	float2 globalPoint, float2 cellOffset, int direction,
+	out float distance, out float2 delta, out float2 tangent, out float t)
+{
+	float2 a, b, curveRight;
+	float bendAmplitude, detailAmplitude, phase;
+	HFRiverCurveParameters(
+		cellOffset, direction, a, b, curveRight,
+		bendAmplitude, detailAmplitude, phase);
+	float2 chord = b - a;
+	t = saturate(dot(globalPoint - a, chord) /
+		max(dot(chord, chord), 0.0001));
+	float2 curvePoint;
 	[unroll]
+	for (int iteration = 0; iteration < 2; iteration++)
+	{
+		HFRiverCurveSample(
+			a, b, curveRight, bendAmplitude, detailAmplitude, phase, t,
+			curvePoint, tangent);
+		t = saturate(t + dot(globalPoint - curvePoint, tangent) /
+			max(dot(tangent, tangent), 0.0001));
+	}
+	HFRiverCurveSample(
+		a, b, curveRight, bendAmplitude, detailAmplitude, phase, t,
+		curvePoint, tangent);
+	delta = globalPoint - curvePoint;
+	distance = length(delta);
+	tangent /= max(length(tangent), 0.0001);
+}
+
+float HFRiverDistance(
+	float2 samplePoint, float2 cellOffset, uint riverMask)
+{
+	float rowParity = fmod(cellOffset.y, 2.0);
+	float2 cellCenter = float2(
+		(cellOffset.x + rowParity * 0.5) * (2.0 * HF_SQRT3_OVER_2),
+		cellOffset.y * 1.5);
+	float2 globalPoint = cellCenter + samplePoint;
+	float distanceToRiver = 1000.0;
+	[loop]
 	for (int directionIndex = 0; directionIndex < 6; directionIndex++)
 	{
 		if ((riverMask & (1u << directionIndex)) == 0u)
 		{
 			continue;
 		}
-		// The river mesh runs from the cell center to each crossed edge. A
-		// slightly extended segment makes cuts from adjacent cells meet cleanly.
-		float2 endpoint = HFDirection(directionIndex) * 1.08;
-		distanceToRiver = min(
-			distanceToRiver,
-			HFDistanceToSegment(samplePoint, float2(0.0, 0.0), endpoint));
+		float candidateDistance, t;
+		float2 delta, tangent;
+		HFRiverCurveCoordinates(
+			globalPoint, cellOffset, directionIndex,
+			candidateDistance, delta, tangent, t);
+		distanceToRiver = min(distanceToRiver, candidateDistance);
 	}
 	return distanceToRiver;
+}
+
+// HF builds rivers from corner-to-corner path meshes laid on shared hex edges.
+// U spans the strip and V advances by one sixth per unit-length edge section.
+// Reconstruct those coordinates from the logical edge mask so River1_d /
+// River1_m follow the analytical boundary channel.
+void HFRiverCoordinates(
+	float2 samplePoint, float2 cellOffset, uint riverMask,
+	out float distanceToRiver, out float2 riverUV)
+{
+	distanceToRiver = 1000.0;
+	riverUV = 0.0;
+	if (riverMask == 0u)
+	{
+		return;
+	}
+	float rowParity = fmod(cellOffset.y, 2.0);
+	float2 cellCenter = float2(
+		(cellOffset.x + rowParity * 0.5) * (2.0 * HF_SQRT3_OVER_2),
+		cellOffset.y * 1.5);
+	float2 globalPoint = cellCenter + samplePoint;
+	[loop]
+	for (int directionIndex = 0; directionIndex < 6; directionIndex++)
+	{
+		if ((riverMask & (1u << directionIndex)) == 0u)
+		{
+			continue;
+		}
+		float candidateDistance, t;
+		float2 delta, tangent;
+		HFRiverCurveCoordinates(
+			globalPoint, cellOffset, directionIndex,
+			candidateDistance, delta, tangent, t);
+		if (candidateDistance >= distanceToRiver)
+		{
+			continue;
+		}
+
+		float2 right = float2(tangent.y, -tangent.x);
+		float halfWidth = max(_HexReliefRiverCarve.y, 0.0001);
+		distanceToRiver = candidateDistance;
+		riverUV = float2(
+			0.5 + dot(delta, right) /
+				(2.0 * halfWidth),
+			(HFRiverHash01(HFRiverEdgeHash(cellOffset, directionIndex), 5u) *
+				6.0 + t) / 6.0);
+	}
+}
+
+void HFAccumulateWaterRiver(
+	inout float riverDistance, inout float2 riverUV,
+	float2 requestedOffset, float2 samplePoint)
+{
+	HFCellShape cell = HFLoadCell(requestedOffset);
+	// This is intentionally the inverse of terrain river accumulation. It is
+	// sampled only by the water material near a confirmed dry river mouth, so
+	// the first underwater topology segment can continue across the sea surface
+	// without carving or painting the seabed.
+	if (cell.valid < 0.5 || cell.underwater < 0.5 || cell.riverMask == 0u)
+	{
+		return;
+	}
+	float candidateDistance;
+	float2 candidateUV;
+	HFRiverCoordinates(
+		samplePoint, requestedOffset, cell.riverMask,
+		candidateDistance, candidateUV);
+	if (candidateDistance < riverDistance)
+	{
+		riverDistance = candidateDistance;
+		riverUV = candidateUV;
+	}
+}
+
+void HFWaterRiverCoordinates(
+	float2 rootOffset, float2 localPosition,
+	out float riverDistance, out float2 riverUV)
+{
+	riverDistance = 1000.0;
+	riverUV = 0.0;
+	HFAccumulateWaterRiver(
+		riverDistance, riverUV, rootOffset, localPosition);
+	[unroll]
+	for (int direction = 0; direction < 6; direction++)
+	{
+		float2 firstOffset = HFNeighborOffset(rootOffset, direction);
+		float2 firstCenter = HFNeighborCenter(direction);
+		HFAccumulateWaterRiver(
+			riverDistance, riverUV, firstOffset,
+			localPosition - firstCenter);
+
+		// Include the six corner-facing ring-two cells for the same root-invariant
+		// behavior as the relief surface at shared hex vertices.
+		int nextDirection = (direction + 1) % 6;
+		float2 cornerOffset = HFNeighborOffset(
+			firstOffset, nextDirection);
+		float2 cornerCenter = firstCenter +
+			HFNeighborCenter(nextDirection);
+		HFAccumulateWaterRiver(
+			riverDistance, riverUV, cornerOffset,
+			localPosition - cornerCenter);
+	}
 }
 
 float HFSmoothMaximum(float a, float b, float softness)
@@ -516,6 +770,7 @@ struct HFOriginalReliefAccumulator
 	float2 strongestUV;
 	float strongestPanel;
 	float riverDistance;
+	float2 riverUV;
 	float mixerSea;
 	float fillSea;
 	float weightedWaterSurfaceY;
@@ -559,9 +814,22 @@ void HFAccumulateOriginalRelief(
 	accumulator.weightedWaterSurfaceY +=
 		cell.waterSurfaceY * centralization * cell.underwater;
 	accumulator.waterSurfaceWeight += centralization * cell.underwater;
-	accumulator.riverDistance = min(
-		accumulator.riverDistance,
-		HFRiverDistance(samplePoint, cell.riverMask));
+	// River flags are mirrored onto both owners of a shared edge. Underwater
+	// owners must not contribute their continuation, otherwise the analytical
+	// channel remains carved and painted across lake and ocean floors.
+	if (cell.underwater < 0.5)
+	{
+		float candidateRiverDistance;
+		float2 candidateRiverUV;
+		HFRiverCoordinates(
+			samplePoint, requestedOffset, cell.riverMask,
+			candidateRiverDistance, candidateRiverUV);
+		if (candidateRiverDistance < accumulator.riverDistance)
+		{
+			accumulator.riverDistance = candidateRiverDistance;
+			accumulator.riverUV = candidateRiverUV;
+		}
+	}
 
 	float score = mixer + centralization * 0.001;
 	if (score > accumulator.strongestScore)
@@ -593,6 +861,7 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	result.seaInfluence = 0.0;
 	result.waterSurfaceY = 0.0;
 	result.riverDistance = 1000.0;
+	result.riverUV = 0.0;
 
 	float width = _HexCellData_TexelSize.z;
 	float2 rootOffset = float2(
@@ -621,6 +890,7 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 		rootCell.terrain, rootCell.landform, rootCell.plantLevel,
 		rootCell.underwater);
 	accumulator.riverDistance = 1000.0;
+	accumulator.riverUV = 0.0;
 	accumulator.mixerSea = 0.0;
 	accumulator.fillSea = 0.0;
 	accumulator.weightedWaterSurfaceY = 0.0;
@@ -659,6 +929,9 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	float inverseWeight = 1.0 / totalWeight;
 	float heightSample = (accumulator.mixerHeight +
 		accumulator.fillHeight * missingStrength) * inverseWeight;
+	float seaInfluence = saturate(
+		(accumulator.mixerSea + accumulator.fillSea * missingStrength) *
+		inverseWeight);
 	// Diffuse is reconstructed per fragment by HF_EvaluateOriginalDiffuse.
 	// Sampling it here would reduce HF's full-resolution colour to one sample per
 	// tessellated vertex and would also repeat the work for the shadow offsets.
@@ -669,6 +942,17 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	// deep base elevations here shifts the zero crossing and creates false sand
 	// islands whose coarse triangulation changes with camera distance.
 	float baseY = _HexHFOriginalDatumY;
+	// HF's RiverHeightShader ignores River1_h and applies a Min blend of
+	// (1 - River1_m) * 0.5 + 0.46. Reproduce that authored river bed before
+	// converting the final baked height to world displacement.
+	if (accumulator.riverDistance < _HexReliefRiverCarve.y)
+	{
+		float riverMixer = HFOriginalSampleRiverMixer(accumulator.riverUV);
+		float riverHeight = (1.0 - riverMixer) * 0.5 + 0.46;
+		float carvedHeight = min(heightSample, riverHeight);
+		float riverLandMask = 1.0 - smoothstep(0.12, 0.62, seaInfluence);
+		heightSample = lerp(heightSample, carvedHeight, riverLandMask);
+	}
 	float displacement =
 		(heightSample - 0.5) * _HexHFOriginalHeightScale;
 	// HF attenuates downward displacement to avoid deep pits.
@@ -676,14 +960,6 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	{
 		displacement *= 0.6;
 	}
-	float riverFade = smoothstep(
-		_HexReliefRiverCarve.x,
-		_HexReliefRiverCarve.y,
-		accumulator.riverDistance);
-	// River water is 1.5 units below the logical elevation in this project.
-	// Sink the stamped terrain slightly farther at the channel core.
-	displacement = lerp(-1.65, displacement, riverFade);
-
 	result.height = displacement;
 	result.height01 = saturate(
 		displacement / max(_HexHFOriginalHeightScale * 0.5, 0.001));
@@ -694,12 +970,11 @@ HFReliefSurface HF_EvaluateOriginalRelief(
 	result.style = accumulator.style;
 	result.moduleUV = accumulator.strongestUV;
 	result.moduleIndex = accumulator.strongestPanel;
-	result.seaInfluence = saturate(
-		(accumulator.mixerSea + accumulator.fillSea * missingStrength) *
-		inverseWeight);
+	result.seaInfluence = seaInfluence;
 	result.waterSurfaceY = accumulator.waterSurfaceWeight > 0.0001 ?
 		_HexHFOriginalDatumY : 0.0;
 	result.riverDistance = accumulator.riverDistance;
+	result.riverUV = accumulator.riverUV;
 	result.y = baseY + displacement + 0.018;
 	return result;
 }
@@ -721,6 +996,7 @@ HFReliefSurface HF_EvaluateLegacyRelief(float cellIndex, float2 localPosition)
 	result.seaInfluence = 0.0;
 	result.waterSurfaceY = 0.0;
 	result.riverDistance = 1000.0;
+	result.riverUV = 0.0;
 
 	float width = _HexCellData_TexelSize.z;
 	float2 rootOffset = float2(
@@ -758,9 +1034,13 @@ HFReliefSurface HF_EvaluateLegacyRelief(float cellIndex, float2 localPosition)
 			weightedBaseY += cell.baseY * stampWeight;
 			totalBaseWeight += stampWeight;
 		}
-		riverDistance = min(
-			riverDistance,
-			HFRiverDistance(candidatePoint, cell.riverMask));
+		if (cell.underwater < 0.5)
+		{
+			riverDistance = min(
+				riverDistance,
+				HFRiverDistance(
+					candidatePoint, requestedOffset, cell.riverMask));
+		}
 
 		float stampHeight;
 		float stampCoverage;
@@ -847,6 +1127,8 @@ HFReliefSurface HF_EvaluateRelief(float cellIndex, float2 localPosition)
 		legacy.waterSurfaceY, original.waterSurfaceY, originalBlend);
 	legacy.riverDistance = lerp(
 		legacy.riverDistance, original.riverDistance, originalBlend);
+	legacy.riverUV = lerp(
+		legacy.riverUV, original.riverUV, originalBlend);
 	if (originalBlend > 0.5)
 	{
 		legacy.landform = original.landform;
@@ -888,11 +1170,8 @@ void HFAccumulateOriginalDiffuse(
 	float panel = HFOriginalPanelForCell(
 		cell.terrain, cell.landform, cell.plantLevel, cell.underwater);
 	float mixer = HFOriginalSampleMixer(panel, uv) * centralization;
-	// HF does not blend Sand1_d as an ordinary terrain diffuse. Its Oven draws
-	// sea colour in a separate border-only pass below the 0.55 height contour.
-	// Excluding it here prevents the complete Water_m ownership lobes from
-	// becoming opaque beige terrain; the relief fragment adds the submerged
-	// sand/deep-floor art from the final reconstructed height instead.
+	// HF does not blend Sand1_d as an ordinary terrain diffuse. The visible
+	// seabed and shoreline use the established project coast palette instead.
 	if (cell.underwater > 0.5)
 	{
 		return;

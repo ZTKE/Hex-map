@@ -24,7 +24,8 @@ public partial class HexGridChunk
 		bridge.y = Grid.CellPositions[neighborIndex].y - centerY;
 		var e2 = new EdgeVertices(e1.v1 + bridge, e1.v5 + bridge);
 
-		bool hasRiver = cell.HasRiverThroughEdge(direction);
+		bool hasRiver = !useHFOriginalSurface &&
+			cell.HasLegacyRiverThroughEdge(direction);
 		bool hasRoad = cell.HasRoadThroughEdge(direction);
 
 		if (hasRiver)

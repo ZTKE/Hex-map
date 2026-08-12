@@ -89,10 +89,14 @@ Shader "Hex Map/Relief"
 			float _HexBiomeSnowLine[5];
 			float4 _HexDeepOceanColor;
 			float4 _HexShallowWaterColor;
+			float4 _HexShoreFoamColor;
 			float4 _HexWetSandColor;
 			float4 _HexDrySandColor;
 			float4 _HexRiverWaterColor;
 			float4 _HexRiverBankColor;
+			// x: flow speed, y: wave frequency, z: wave-normal strength,
+			// w: smoothness / highlight sharpness.
+			float4 _HexRiverWaterMotion;
 
 			struct Attributes
 			{
@@ -128,6 +132,7 @@ Shader "Hex Map/Relief"
 				half fogFactor : TEXCOORD6;
 				float2 localPosition : TEXCOORD7;
 				float3 waterData : TEXCOORD8;
+				float2 riverUV : TEXCOORD9;
 			};
 
 			TessControlPoint Vert(Attributes input)
@@ -236,6 +241,7 @@ Shader "Hex Map/Relief"
 				output.waterData = float3(
 					surface.seaInfluence, surface.waterSurfaceY,
 					surface.riverDistance);
+				output.riverUV = surface.riverUV;
 				return output;
 			}
 
@@ -466,19 +472,10 @@ Shader "Hex Map/Relief"
 				{
 					half3 color = HF_EvaluateOriginalDiffuse(
 						input.cellIndices.x, input.localPosition);
-					// HF only authored three flat-ground triplets (Dirt, Plains and
-					// Marsh), while the editor exposes five independent logical biomes.
-					// IDs 3 and 4 therefore have to reuse HF's structural diffuse/mixer
-					// detail, but must not reuse its final colour. Apply the same logical
-					// five-biome neighbourhood material used by the non-faithful path on
-					// top. This keeps HF height/mixer continuity and texture detail while
-					// making Desert, Grass, Plains, Tundra and Snow genuinely distinct.
-					half3 logicalGround = SampleHFMixedReliefGround(
-						input.positionWS, terrainIndex);
-					color = lerp(
-						color, logicalGround, saturate(_HexTerrainAtlasBlend));
-					// HF's Sand / Water triplet owns the shoreline shape, while
-					// the current palette keeps the project's established coast art.
+					half riverSurfaceMask = 0.0h;
+					half riverCrest = 0.0h;
+					// Keep 3bb7515's established coast art over the continuous HF sea
+					// shape: warm wet/dry sand at the edge, then shallow and deep water.
 					float seaInfluence = saturate(input.waterData.x);
 					half3 sand = lerp(
 						_HexDrySandColor.rgb, _HexWetSandColor.rgb,
@@ -495,9 +492,9 @@ Shader "Hex Map/Relief"
 						color, coastArt,
 						smoothstep(0.06, 0.78, seaInfluence) * submerged);
 
-					// HF owns the complete visible river in faithful mode. Colour the
-					// tessellated carved surface directly, avoiding the legacy ribbon's
-					// straight edges and triangle/terrain intersections.
+					// Preserve the intersection-free analytical channel, then shade its
+					// core as water. The interpolated analytical UV follows every bend,
+					// so motion travels downstream instead of sliding in world X / Z.
 					float riverBank = 1.0 - smoothstep(
 						_HexReliefRiverCarve.x + 0.015,
 						_HexReliefRiverCarve.x + 0.12,
@@ -506,17 +503,81 @@ Shader "Hex Map/Relief"
 						_HexReliefRiverCarve.x * 0.72,
 						_HexReliefRiverCarve.x + 0.065,
 						input.waterData.z);
-					half riverRipple = 0.94h + 0.06h * sin(
-						input.positionWS.x * 0.31h + input.positionWS.z * 0.47h -
-						_Time.y * 1.8h);
-					half visibleRiver = 1.0h - smoothstep(
-						0.42h, 0.92h, seaInfluence);
+					// A river may end at the coast, but its terrain-layer colour must
+					// never remain visible through the lake / ocean water surface.
+					half visibleRiver = (1.0h - (half)submerged) *
+						(1.0h - smoothstep(0.42h, 0.78h, seaInfluence));
+					riverSurfaceMask = (half)riverCore * visibleRiver;
 					color = lerp(
 						color, _HexRiverBankColor.rgb,
 						riverBank * 0.56h * visibleRiver);
+					float2 uvDx = ddx(input.riverUV);
+					float2 uvDy = ddy(input.riverUV);
+					float3 positionDx = ddx(input.positionWS);
+					float3 positionDy = ddy(input.positionWS);
+
+					// Keep the trigonometry and derivative-based water normal off the
+					// ordinary terrain pixels. Large maps pay this cost only where the
+					// narrow visible river core is actually rasterized.
+					[branch]
+					if (riverSurfaceMask > 0.001h)
+					{
+					float determinant = uvDx.x * uvDy.y - uvDx.y * uvDy.x;
+					float determinantSign = determinant < 0.0 ? -1.0 : 1.0;
+					float safeDeterminant = determinantSign *
+						max(abs(determinant), 0.00001);
+					float3 flowTangent =
+						(positionDy * uvDx.x - positionDx * uvDy.x) /
+						safeDeterminant;
+					flowTangent.y = 0.0;
+					float flowLength = length(flowTangent.xz);
+					flowTangent = flowLength > 0.001 ?
+						flowTangent / flowLength : float3(0.0, 0.0, 1.0);
+					float3 riverSide = normalize(cross(
+						float3(0.0, 1.0, 0.0), flowTangent));
+
+					float flowSpeed = max(_HexRiverWaterMotion.x, 0.01);
+					float waveFrequency = max(_HexRiverWaterMotion.y, 0.25);
+					float waveStrength = saturate(_HexRiverWaterMotion.z);
+					float downstreamPhase =
+						input.riverUV.y * waveFrequency * (2.0 * HF_PI) -
+						_Time.y * flowSpeed * (2.0 * HF_PI);
+					float crossRiver = (input.riverUV.x - 0.5) * 2.0;
+					float primaryWave = sin(
+						downstreamPhase + crossRiver * 2.4);
+					float crossingWave = sin(
+						downstreamPhase * 0.63 - crossRiver * 5.2 + 1.7);
+					riverCrest = (half)saturate(
+						primaryWave * 0.28 + crossingWave * 0.22 + 0.5);
+					float downstreamSlope =
+						(cos(downstreamPhase + crossRiver * 2.4) * 0.72 +
+						 cos(downstreamPhase * 0.63 - crossRiver * 5.2 + 1.7) *
+						 0.28) * waveStrength;
+					float crossSlope =
+						(cos(downstreamPhase + crossRiver * 2.4) * 0.22 -
+						 cos(downstreamPhase * 0.63 - crossRiver * 5.2 + 1.7) *
+						 0.34) * waveStrength;
+					half3 riverNormal = normalize(
+						vertexNormal - flowTangent * downstreamSlope -
+						riverSide * crossSlope);
+					vertexNormal = normalize(lerp(
+						vertexNormal, riverNormal, riverSurfaceMask * 0.82h));
+
+					half edgeDepth = (half)saturate(
+						1.0 - abs(crossRiver));
+					half3 riverDeep = _HexRiverWaterColor.rgb * 0.74h;
+					half3 riverShallow = lerp(
+						_HexRiverWaterColor.rgb,
+						_HexShallowWaterColor.rgb, 0.38h);
+					half3 flowingWater = lerp(
+						riverShallow, riverDeep, edgeDepth * 0.72h);
+					flowingWater = lerp(
+						flowingWater, _HexShoreFoamColor.rgb,
+						riverCrest * riverCrest * 0.10h);
 					color = lerp(
-						color, _HexRiverWaterColor.rgb * riverRipple,
-						riverCore * 0.96h * visibleRiver);
+						color, flowingWater,
+						riverSurfaceMask * 0.96h);
+					}
 
 					bool editMode = false;
 					#ifdef _HEX_MAP_EDIT_MODE
@@ -540,6 +601,34 @@ Shader "Hex Map/Relief"
 					half3 lighting = SampleSH(vertexNormal) +
 						mainLight.color * diffuse * shadowAttenuation;
 					color *= min(lighting, 1.2h);
+
+					// Ocean-like Fresnel reflection and a travelling sun glint make the
+					// carved core read as a water surface without restoring a second,
+					// straight river mesh.
+					[branch]
+					if (riverSurfaceMask > 0.001h)
+					{
+					half3 viewDirection = SafeNormalize(
+						_WorldSpaceCameraPos.xyz - input.positionWS);
+					half fresnel = pow(
+						1.0h - saturate(dot(vertexNormal, viewDirection)), 4.0h);
+					half3 halfDirection = SafeNormalize(
+						viewDirection + mainLight.direction);
+					half smoothness = saturate(_HexRiverWaterMotion.w);
+					half specularPower = lerp(24.0h, 112.0h, smoothness);
+					half riverSpecular = pow(
+						saturate(dot(vertexNormal, halfDirection)), specularPower) *
+						mainLight.shadowAttenuation;
+					half3 riverReflection = lerp(
+						_HexShallowWaterColor.rgb,
+						_HexShoreFoamColor.rgb, 0.42h);
+					half3 waterLight =
+						riverReflection * (0.035h + fresnel * 0.28h) +
+						mainLight.color * riverSpecular *
+						lerp(0.22h, 0.68h, smoothness) +
+						_HexShoreFoamColor.rgb * riverCrest * 0.025h;
+					color += waterLight * riverSurfaceMask;
+					}
 					color = MixFog(color, input.fogFactor);
 					if (submerged < 0.5)
 					{

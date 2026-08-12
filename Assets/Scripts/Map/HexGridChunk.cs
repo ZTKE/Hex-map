@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Component that manages a single chunk of <see cref="HexGrid"/>.
@@ -47,8 +49,14 @@ public partial class HexGridChunk : MonoBehaviour
 	HexCoastMesh coastCliffs;
 	HexSurfaceCollider surfaceCollider;
 	bool useHFOriginalSurface;
+	bool interactionEnabled = true;
+
+	public bool InteractionEnabled => interactionEnabled;
 
 	int[] cellIndices;
+	RectTransform[] cellUIs;
+	readonly List<int> validCellIndices = new(
+		HexMetrics.chunkSizeX * HexMetrics.chunkSizeZ);
 
 	Canvas gridCanvas;
 
@@ -59,6 +67,11 @@ public partial class HexGridChunk : MonoBehaviour
 		useHFOriginalSurface = activeStyle.UsesHFOriginalSurface;
 		gridCanvas = GetComponentInChildren<Canvas>();
 		cellIndices = new int[HexMetrics.chunkSizeX * HexMetrics.chunkSizeZ];
+		cellUIs = new RectTransform[cellIndices.Length];
+		for (int i = 0; i < cellIndices.Length; i++)
+		{
+			cellIndices[i] = -1;
+		}
 		GameObject reliefObject = new("Relief");
 		reliefObject.transform.SetParent(transform, false);
 		reliefObject.layer = terrain.gameObject.layer;
@@ -82,17 +95,92 @@ public partial class HexGridChunk : MonoBehaviour
 	/// </summary>
 	/// <param name="index">Index of the cell for the chunk.</param>
 	/// <param name="cellIndex">Index of the cell to add.</param>
-	/// <param name="cellUI">UI root transform of the cell.</param>
-	public void AddCell(int index, int cellIndex, RectTransform cellUI)
+	/// <param name="cellLabelPrefab">Prefab used when the pooled chunk needs a
+	/// label for this local slot for the first time.</param>
+	/// <returns>The pooled UI transform, or null for an unused edge slot.</returns>
+	public RectTransform AddCell(
+		int index, int cellIndex, Text cellLabelPrefab)
 	{
 		cellIndices[index] = cellIndex;
-		cellUI.SetParent(gridCanvas.transform, false);
+		if (cellIndex >= 0)
+		{
+			validCellIndices.Add(cellIndex);
+		}
+		RectTransform cellUI = cellUIs[index];
+		if (!cellUI)
+		{
+			Text label = Instantiate(cellLabelPrefab);
+			cellUI = cellUIs[index] = label.rectTransform;
+			cellUI.SetParent(gridCanvas.transform, false);
+		}
+		cellUI.gameObject.SetActive(cellIndex >= 0);
+		return cellIndex >= 0 ? cellUI : null;
+	}
+
+	/// <summary>
+	/// Get the pooled label bound to a logical cell in this chunk.
+	/// </summary>
+	public RectTransform GetCellUI(int localIndex, int expectedCellIndex) =>
+		cellIndices[localIndex] == expectedCellIndex ? cellUIs[localIndex] : null;
+
+	/// <summary>
+	/// Clear logical bindings before returning this renderer to the chunk pool.
+	/// </summary>
+	public void UnbindCells()
+	{
+		validCellIndices.Clear();
+		for (int i = 0; i < cellIndices.Length; i++)
+		{
+			cellIndices[i] = -1;
+			if (cellUIs[i])
+			{
+				cellUIs[i].gameObject.SetActive(false);
+			}
+		}
 	}
 
 	/// <summary>
 	/// Refresh the chunk.
 	/// </summary>
 	public void Refresh() => enabled = true;
+
+	/// <summary>
+	/// Physics is only needed near the camera. Far visual chunks retain their
+	/// meshes but skip the expensive HF MeshCollider cooking step.
+	/// </summary>
+	public void SetInteractionEnabled(bool value, bool refresh = true)
+	{
+		if (interactionEnabled == value)
+		{
+			return;
+		}
+		interactionEnabled = value;
+		if (!value)
+		{
+			EnsureSurfaceCollider();
+			surfaceCollider.Clear();
+			terrain.SetColliderEnabled(false);
+		}
+		else if (refresh)
+		{
+			// Geometry is already current for an active streamed chunk. Rebuilding
+			// every render mesh just to add physics caused a visible hitch whenever
+			// the camera crossed a chunk boundary.
+			HexTerrainStyle activeStyle = terrainStyle ?
+				terrainStyle : HexTerrainStyle.RuntimeDefault;
+			useHFOriginalSurface = activeStyle.UsesHFOriginalSurface;
+			if (useHFOriginalSurface)
+			{
+				EnsureSurfaceCollider();
+				surfaceCollider.Build(
+					Grid, validCellIndices, activeStyle.hfColliderSubdivisions);
+			}
+			else
+			{
+				terrain.SetColliderEnabled(true);
+			}
+		}
+	}
 
 	/// <summary>
 	/// Control whether the map UI is visibile or hidden for the chunk.
@@ -134,14 +222,14 @@ public partial class HexGridChunk : MonoBehaviour
 		features.Clear();
 		relief.Clear();
 		coastCliffs.Clear();
-		for (int i = 0; i < cellIndices.Length; i++)
+		for (int i = 0; i < validCellIndices.Count; i++)
 		{
-			Triangulate(cellIndices[i]);
+			Triangulate(validCellIndices[i]);
 		}
 		if (useHFOriginalSurface)
 		{
 			// Catlike triangulation above is intentionally retained as the
-			// compatibility/topology source for roads, rivers, and walls. HF mode
+			// compatibility/topology source for roads and walls. HF boundary rivers
 			// discards its terrain vertices here so they cannot become a hidden
 			// second map surface.
 			terrain.SetColliderEnabled(false);
@@ -153,15 +241,22 @@ public partial class HexGridChunk : MonoBehaviour
 			// logical edge flags. Discard Catlike's ribbon so it cannot intersect the
 			// tessellated channel or expose its straight triangle topology.
 			rivers.Discard();
-			surfaceCollider.Build(
-				Grid, cellIndices, activeStyle.hfColliderSubdivisions);
+			if (interactionEnabled)
+			{
+				surfaceCollider.Build(
+					Grid, validCellIndices, activeStyle.hfColliderSubdivisions);
+			}
+			else
+			{
+				surfaceCollider.Clear();
+			}
 		}
 		else
 		{
 			// Explicit legacy compatibility branch. It is never selected merely
 			// because an HF texture is missing.
 			surfaceCollider.Clear();
-			terrain.SetColliderEnabled(true);
+			terrain.SetColliderEnabled(interactionEnabled);
 			terrain.Apply();
 		}
 		if (!useHFOriginalSurface)
@@ -263,7 +358,14 @@ public partial class HexGridChunk : MonoBehaviour
 			center + HexMetrics.GetFirstSolidCorner(direction),
 			center + HexMetrics.GetSecondSolidCorner(direction));
 
-		if (cell.HasRiver)
+		if (useHFOriginalSurface && cell.HasHFRiver)
+		{
+			// HF rivers live on shared outer edges and are evaluated analytically by
+			// Relief. Keep only ordinary terrain/road topology here; generating a
+			// center ribbon would reintroduce the geometry this mode replaces.
+			TriangulateWithoutRiver(direction, cell, cellIndex, center, e);
+		}
+		else if (cell.HasLegacyRiver)
 		{
 			if (cell.HasRiverThroughEdge(direction))
 			{

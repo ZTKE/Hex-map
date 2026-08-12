@@ -114,9 +114,9 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[Min(0.25f)] public float desertMountainWidth = 1.08f;
 
 	[Header("Material sources")]
-	[Tooltip("Five equal vertical panels: Desert, Grass, Plains, Tundra, Snow.")]
+	[Tooltip("Legacy compatibility atlas. HF Original mode never overlays it on authored terrain.")]
 	public Texture2D terrainSurfaceAtlas;
-	[Range(0f, 1f)] public float terrainSurfaceBlend = 0.82f;
+	[Range(0f, 1f)] public float terrainSurfaceBlend;
 	[Min(0.001f)] public float terrainSurfaceTiling = 0.018f;
 	[Range(0f, 0.3f)] public float terrainMacroVariation = 0.1f;
 	public Texture2D rockAlbedo;
@@ -158,7 +158,7 @@ public sealed class HexTerrainStyle : ScriptableObject
 	public Texture2D hfMountainDiffuse;
 	public Texture2D hfMountainHeight;
 	public Texture2D hfMountainMixer;
-	[Tooltip("HF sea border diffuse (Sand1_d). The current water shader still owns the final ocean colours.")]
+	[Tooltip("HF sea border source (Sand1_d). The 3bb7515 water shader owns the final coast colours.")]
 	public Texture2D hfSeaDiffuse;
 	[Tooltip("HF sea height stamp (Water_h), used to form the continuous shoreline.")]
 	public Texture2D hfSeaHeight;
@@ -182,6 +182,22 @@ public sealed class HexTerrainStyle : ScriptableObject
 	public Color drySand = new(0.78f, 0.63f, 0.36f, 1f);
 	public Color riverWater = new(0.035f, 0.25f, 0.29f, 1f);
 	public Color riverBank = new(0.43f, 0.32f, 0.18f, 1f);
+	[Tooltip("Downstream river animation speed.")]
+	[Range(0f, 3f)] public float riverFlowSpeed = 0.72f;
+	[Tooltip("Number of travelling wave bands per analytical river segment.")]
+	[Range(0.5f, 6f)] public float riverWaveFrequency = 2.4f;
+	[Tooltip("Strength of the procedural river surface normal.")]
+	[Range(0f, 1f)] public float riverWaveStrength = 0.32f;
+	[Tooltip("River highlight sharpness and reflection intensity.")]
+	[Range(0f, 1f)] public float riverSmoothness = 0.82f;
+	[Tooltip("How far the river mouth continues across shallow sea, in normalized hex units.")]
+	[Range(0.2f, 2f)] public float riverMouthLength = 0.95f;
+	[Tooltip("Final width of the river plume where it dissolves into the sea.")]
+	[Range(0.1f, 0.6f)] public float riverMouthWidth = 0.28f;
+	[Tooltip("Strength of river-water colour over the ocean at a river mouth.")]
+	[Range(0f, 1f)] public float riverMouthTint = 0.72f;
+	[Tooltip("Foam and travelling ripple strength at river mouths.")]
+	[Range(0f, 1f)] public float riverMouthFoam = 0.42f;
 	[Range(0f, 1f)] public float waterStyleBlend = 0.84f;
 
 	[Header("Coast cliff material set")]
@@ -193,10 +209,10 @@ public sealed class HexTerrainStyle : ScriptableObject
 	[Header("Biome feature material set")]
 	[Tooltip("Per-biome foliage tint: Desert, Grass, Plains, Tundra, Snow.")]
 	[SerializeField] Color[] plantTints = BuildDefaultPlantTints();
-	[Range(0f, 1f)] public float vegetationStyleBlend = 0.74f;
+	[Range(0f, 1f)] public float vegetationStyleBlend;
 
 	[Header("Civilization-style shader art direction")]
-	[Range(0f, 1f)] public float shaderStyleStrength = 0.82f;
+	[Range(0f, 1f)] public float shaderStyleStrength;
 	[Range(0.7f, 1.5f)] public float shaderSaturation = 1.08f;
 	[Range(0.7f, 1.4f)] public float shaderContrast = 1.02f;
 	[Range(0f, 0.5f)] public float shaderPosterization = 0.13f;
@@ -467,7 +483,9 @@ public sealed class HexTerrainStyle : ScriptableObject
 			Shader.SetGlobalTexture("_HexTerrainStyleAtlas", terrainSurfaceAtlas);
 		}
 		Shader.SetGlobalFloat(
-			"_HexTerrainAtlasBlend", terrainSurfaceAtlas ? terrainSurfaceBlend : 0f);
+			"_HexTerrainAtlasBlend",
+			UsesHFOriginalSurface ? 0f :
+				(terrainSurfaceAtlas ? terrainSurfaceBlend : 0f));
 		Shader.SetGlobalFloat("_HexTerrainAtlasTiling", terrainSurfaceTiling);
 		Shader.SetGlobalFloat("_HexTerrainMacroVariation", terrainMacroVariation);
 		if (hfTerrainMixer)
@@ -528,6 +546,12 @@ public sealed class HexTerrainStyle : ScriptableObject
 		Shader.SetGlobalColor("_HexDrySandColor", drySand);
 		Shader.SetGlobalColor("_HexRiverWaterColor", riverWater);
 		Shader.SetGlobalColor("_HexRiverBankColor", riverBank);
+		Shader.SetGlobalVector("_HexRiverWaterMotion", new Vector4(
+			riverFlowSpeed, riverWaveFrequency,
+			riverWaveStrength, riverSmoothness));
+		Shader.SetGlobalVector("_HexRiverMouth", new Vector4(
+			riverMouthLength, riverMouthWidth,
+			riverMouthTint, riverMouthFoam));
 		Shader.SetGlobalFloat("_HexWaterStyleBlend", waterStyleBlend);
 		Shader.SetGlobalColor("_HexCoastCliffLow", coastCliffLow);
 		Shader.SetGlobalColor("_HexCoastCliffHigh", coastCliffHigh);
@@ -564,7 +588,8 @@ public sealed class HexTerrainStyle : ScriptableObject
 		hfMarshDiffuse && hfMarshMixer &&
 		hfHillDiffuse && hfHillHeight && hfHillMixer &&
 		hfMountainDiffuse && hfMountainHeight && hfMountainMixer &&
-		hfSeaDiffuse && hfSeaHeight && hfSeaMixer;
+		hfSeaDiffuse && hfSeaHeight && hfSeaMixer &&
+		hfRiverDiffuse && hfRiverHeight && hfRiverOriginalMixer;
 
 	MountainModule GetModule(int index)
 	{

@@ -9,7 +9,7 @@ using System.IO;
 /// </summary>
 public class SaveLoadMenu : MonoBehaviour
 {
-	const int mapFileVersion = 8;
+	const int mapFileVersion = DefaultWorldMapBootstrap.CurrentMapFileVersion;
 
 	[SerializeField]
 	Text menuLabel, actionButtonLabel;
@@ -142,7 +142,7 @@ public class SaveLoadMenu : MonoBehaviour
 		if (header <= mapFileVersion)
 		{
 			hexGrid.Load(reader, header);
-			HexMapCamera.ValidatePosition();
+			HexMapCamera.FocusCreatedMap();
 		}
 		else
 		{

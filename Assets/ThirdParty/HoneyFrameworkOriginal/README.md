@@ -5,6 +5,11 @@ project-local HoneyFramework reference at:
 
 `D:/unity game hub/WW2_map_project/Assets/URP3D_HoneyFramework/HoneyFramework`
 
+The complete source project is also available inside this repository as the
+`References/WW2_map_project` Git submodule. Use its
+`Assets/URP3D_HoneyFramework/HoneyFramework` directory when checking the
+original implementation rather than inferring behavior from the copied art.
+
 The original image files are retained as authored. Import metadata disables
 sRGB sampling for numeric height/mixer masks and CPU readback for foreground
 art, which is sampled only by the GPU.

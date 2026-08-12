@@ -16,7 +16,6 @@ public sealed class HexSurfaceSampler
 {
 	const float sqrt3Over2 = 0.86602540378f;
 	const float hfSurfaceBias = 0.018f;
-	const float hfRiverBed = -1.65f;
 
 	static readonly Vector2[] neighborCenters =
 	{
@@ -41,6 +40,7 @@ public sealed class HexSurfaceSampler
 	readonly HexGrid grid;
 	readonly ScalarTexture[] heights = new ScalarTexture[6];
 	readonly ScalarTexture[] mixers = new ScalarTexture[6];
+	ScalarTexture riverMixer;
 
 	HexTerrainStyle style;
 	int textureSignature;
@@ -55,7 +55,10 @@ public sealed class HexSurfaceSampler
 		public float fillWeight;
 		public float mixerHeight;
 		public float fillHeight;
+		public float mixerSea;
+		public float fillSea;
 		public float riverDistance;
+		public Vector2 riverUV;
 	}
 
 	sealed class ScalarTexture
@@ -132,6 +135,30 @@ public sealed class HexSurfaceSampler
 			return Mathf.Lerp(a, b, ty);
 		}
 
+		public float SampleBilinearRepeatY(Vector2 uv)
+		{
+			float x = Mathf.Clamp01(uv.x) * width - 0.5f;
+			float y = Mathf.Repeat(uv.y, 1f) * height - 0.5f;
+			int x0 = Mathf.FloorToInt(x);
+			int y0 = Mathf.FloorToInt(y);
+			float tx = x - x0;
+			float ty = y - y0;
+			int x1 = Mathf.Clamp(x0 + 1, 0, width - 1);
+			int y1 = Mod(y0 + 1, height);
+			x0 = Mathf.Clamp(x0, 0, width - 1);
+			y0 = Mod(y0, height);
+
+			float a = Mathf.Lerp(Read(x0, y0), Read(x1, y0), tx);
+			float b = Mathf.Lerp(Read(x0, y1), Read(x1, y1), tx);
+			return Mathf.Lerp(a, b, ty);
+		}
+
+		static int Mod(int value, int modulus)
+		{
+			int result = value % modulus;
+			return result < 0 ? result + modulus : result;
+		}
+
 		float Read(int x, int y) =>
 			pixels[(y * width + x) * stride] * (1f / 255f);
 	}
@@ -159,6 +186,7 @@ public sealed class HexSurfaceSampler
 		reportedCacheFailure = false;
 		Array.Clear(heights, 0, heights.Length);
 		Array.Clear(mixers, 0, mixers.Length);
+		riverMixer = null;
 	}
 
 	/// <summary>
@@ -246,6 +274,21 @@ public sealed class HexSurfaceSampler
 		}
 		float heightSample = (accumulator.mixerHeight +
 			accumulator.fillHeight * missingStrength) / totalWeight;
+		float seaInfluence = Mathf.Clamp01(
+			(accumulator.mixerSea + accumulator.fillSea * missingStrength) /
+			totalWeight);
+		if (carveRiver &&
+			accumulator.riverDistance < style.hfRiverCarve.y)
+		{
+			float authoredMixer = riverMixer.SampleBilinearRepeatY(
+				accumulator.riverUV);
+			float riverHeight = (1f - authoredMixer) * 0.5f + 0.46f;
+			float carvedHeight = Mathf.Min(heightSample, riverHeight);
+			float riverLandMask = 1f - Mathf.SmoothStep(
+				0f, 1f, Mathf.InverseLerp(0.12f, 0.62f, seaInfluence));
+			heightSample = Mathf.Lerp(
+				heightSample, carvedHeight, riverLandMask);
+		}
 		float displacement =
 			(heightSample - 0.5f) * style.hfOriginalHeightScale;
 		if (displacement < 0f)
@@ -253,14 +296,6 @@ public sealed class HexSurfaceSampler
 			displacement *= 0.6f;
 		}
 
-		if (carveRiver)
-		{
-			float riverFade = SmoothStep(
-				style.hfRiverCarve.x,
-				style.hfRiverCarve.y,
-				accumulator.riverDistance);
-			displacement = Mathf.Lerp(hfRiverBed, displacement, riverFade);
-		}
 		return DatumY + displacement + hfSurfaceBias;
 	}
 
@@ -301,11 +336,19 @@ public sealed class HexSurfaceSampler
 		accumulator.fillWeight += centralization;
 		accumulator.mixerHeight += height * mixer;
 		accumulator.fillHeight += height * centralization;
-		if (carveRiver)
+		float underwater = cell.IsUnderwater ? 1f : 0f;
+		accumulator.mixerSea += mixer * underwater;
+		accumulator.fillSea += centralization * underwater;
+		if (carveRiver && !cell.IsUnderwater)
 		{
-			accumulator.riverDistance = Mathf.Min(
-				accumulator.riverDistance,
-				RiverDistance(samplePoint, cell));
+			RiverCoordinates(
+				samplePoint, requestedX, requestedZ, cell,
+				out float candidateDistance, out Vector2 candidateUV);
+			if (candidateDistance < accumulator.riverDistance)
+			{
+				accumulator.riverDistance = candidateDistance;
+				accumulator.riverUV = candidateUV;
+			}
 		}
 	}
 
@@ -354,6 +397,7 @@ public sealed class HexSurfaceSampler
 			mixers[3] = Read(style.hfHillMixer, 0);
 			mixers[4] = Read(style.hfMountainMixer, 0);
 			mixers[5] = Read(style.hfSeaMixer, 0);
+			riverMixer = Read(style.hfRiverOriginalMixer, 0);
 			cacheReady = true;
 		}
 		catch (Exception exception)
@@ -429,28 +473,181 @@ public sealed class HexSurfaceSampler
 		return Mathf.Clamp01(3f * (1f - maximum * 2f));
 	}
 
-	static float RiverDistance(Vector2 point, HexCellData cell)
+	void RiverCoordinates(
+		Vector2 point, int cellX, int cellZ, HexCellData cell,
+		out float distance, out Vector2 uv)
 	{
-		float distance = 1000f;
+		distance = 1000f;
+		uv = Vector2.zero;
+		Vector2 cellCenter = new(
+			(cellX + (cellZ & 1) * 0.5f) * (2f * sqrt3Over2),
+			cellZ * 1.5f);
+		Vector2 globalPoint = cellCenter + point;
 		for (int direction = 0; direction < 6; direction++)
 		{
 			if (!cell.HasRiverThroughEdge((HexDirection)direction))
 			{
 				continue;
 			}
-			Vector2 endpoint = riverDirections[direction] * 1.08f;
-			float denominator = Mathf.Max(Vector2.Dot(endpoint, endpoint), 0.0001f);
-			float t = Mathf.Clamp01(Vector2.Dot(point, endpoint) / denominator);
-			distance = Mathf.Min(distance, (point - endpoint * t).magnitude);
+			RiverCurveCoordinates(
+				globalPoint, cellX, cellZ, direction,
+				out float candidateDistance, out Vector2 delta,
+				out Vector2 tangent, out float t);
+			if (candidateDistance >= distance)
+			{
+				continue;
+			}
+			Vector2 right = new(tangent.y, -tangent.x);
+			float halfWidth = Mathf.Max(style.hfRiverCarve.y, 0.0001f);
+			distance = candidateDistance;
+			uv = new Vector2(
+				0.5f + Vector2.Dot(delta, right) / (2f * halfWidth),
+				(RiverHash01(RiverEdgeHash(cellX, cellZ, direction), 5u) *
+					6f + t) / 6f);
 		}
-		return distance;
 	}
 
-	static float SmoothStep(float minimum, float maximum, float value)
+	void RiverCurveCoordinates(
+		Vector2 globalPoint, int cellX, int cellZ, int direction,
+		out float distance, out Vector2 delta,
+		out Vector2 tangent, out float t)
 	{
-		float t = Mathf.Clamp01((value - minimum) /
-			Mathf.Max(maximum - minimum, 0.0001f));
-		return t * t * (3f - 2f * t);
+		RiverCurveParameters(
+			cellX, cellZ, direction,
+			out Vector2 a, out Vector2 b, out Vector2 right,
+			out float bendAmplitude, out float detailAmplitude, out float phase);
+		Vector2 chord = b - a;
+		t = Mathf.Clamp01(
+			Vector2.Dot(globalPoint - a, chord) /
+			Mathf.Max(Vector2.Dot(chord, chord), 0.0001f));
+		Vector2 curvePoint = Vector2.zero;
+		tangent = chord;
+		for (int iteration = 0; iteration < 2; iteration++)
+		{
+			RiverCurveSample(
+				a, b, right, bendAmplitude, detailAmplitude, phase, t,
+				out curvePoint, out tangent);
+			t = Mathf.Clamp01(t +
+				Vector2.Dot(globalPoint - curvePoint, tangent) /
+				Mathf.Max(Vector2.Dot(tangent, tangent), 0.0001f));
+		}
+		RiverCurveSample(
+			a, b, right, bendAmplitude, detailAmplitude, phase, t,
+			out curvePoint, out tangent);
+		delta = globalPoint - curvePoint;
+		distance = delta.magnitude;
+		tangent = tangent.sqrMagnitude > 0.0001f ?
+			tangent.normalized : chord.normalized;
+	}
+
+	void RiverCurveParameters(
+		int cellX, int cellZ, int direction,
+		out Vector2 a, out Vector2 b, out Vector2 right,
+		out float bendAmplitude, out float detailAmplitude, out float phase)
+	{
+		RiverEdgeSegment(
+			direction, out Vector2 localA, out Vector2 localB,
+			out _);
+		Vector2 center = new(
+			(cellX + (cellZ & 1) * 0.5f) * (2f * sqrt3Over2),
+			cellZ * 1.5f);
+		a = center + localA;
+		b = center + localB;
+		if (b.x < a.x - 0.0001f ||
+			(Mathf.Abs(b.x - a.x) <= 0.0001f && b.y < a.y))
+		{
+			(a, b) = (b, a);
+		}
+		Vector2 tangent = (b - a).normalized;
+		right = new Vector2(tangent.y, -tangent.x);
+
+		uint edgeHash = RiverEdgeHash(cellX, cellZ, direction);
+		float bendSide = RiverHash01(edgeHash, 1u) < 0.5f ? -1f : 1f;
+		bendAmplitude = bendSide * Mathf.Lerp(
+			0.070f, 0.155f, RiverHash01(edgeHash, 2u));
+		detailAmplitude = Mathf.Lerp(
+			0.018f, 0.040f, RiverHash01(edgeHash, 3u));
+		phase = RiverHash01(edgeHash, 4u) * (2f * Mathf.PI);
+	}
+
+	static void RiverCurveSample(
+		Vector2 a, Vector2 b, Vector2 right,
+		float bendAmplitude, float detailAmplitude, float phase, float t,
+		out Vector2 point, out Vector2 tangent)
+	{
+		float oneMinusT = 1f - t;
+		float envelope = 16f * t * t * oneMinusT * oneMinusT;
+		float envelopeDerivative =
+			32f * t * oneMinusT * (1f - 2f * t);
+		float waveAngle = t * (2f * Mathf.PI) + phase;
+		float wave = Mathf.Sin(waveAngle);
+		float bend = envelope * (bendAmplitude + detailAmplitude * wave);
+		float bendDerivative =
+			envelopeDerivative * (bendAmplitude + detailAmplitude * wave) +
+			envelope * detailAmplitude * (2f * Mathf.PI) *
+			Mathf.Cos(waveAngle);
+		point = Vector2.LerpUnclamped(a, b, t) + right * bend;
+		tangent = (b - a) + right * bendDerivative;
+	}
+
+	uint RiverEdgeHash(int cellX, int cellZ, int direction)
+	{
+		ResolveOffset(cellX, cellZ, out int currentX, out int currentZ);
+		Vector2Int neighbor = NeighborOffset(cellX, cellZ, direction);
+		if (!ResolveOffset(
+			neighbor.x, neighbor.y, out int neighborX, out int neighborZ))
+		{
+			neighborX = neighbor.x;
+			neighborZ = neighbor.y;
+		}
+		if (neighborZ < currentZ ||
+			(neighborZ == currentZ && neighborX < currentX))
+		{
+			(currentX, neighborX) = (neighborX, currentX);
+			(currentZ, neighborZ) = (neighborZ, currentZ);
+		}
+		unchecked
+		{
+			uint hash = 2166136261u;
+			hash = (hash ^ (uint)currentX) * 16777619u;
+			hash = (hash ^ (uint)currentZ) * 16777619u;
+			hash = (hash ^ (uint)neighborX) * 16777619u;
+			hash = (hash ^ (uint)neighborZ) * 16777619u;
+			return RiverHashBits(hash);
+		}
+	}
+
+	static float RiverHash01(uint edgeHash, uint salt)
+	{
+		uint hash;
+		unchecked
+		{
+			hash = RiverHashBits(edgeHash ^ (salt * 0x9e3779b9u));
+		}
+		return (hash & 0x00ffffffu) / 16777216f;
+	}
+
+	static uint RiverHashBits(uint hash)
+	{
+		unchecked
+		{
+			hash ^= hash >> 16;
+			hash *= 0x7feb352du;
+			hash ^= hash >> 15;
+			hash *= 0x846ca68bu;
+			hash ^= hash >> 16;
+			return hash;
+		}
+	}
+
+	static void RiverEdgeSegment(
+		int direction, out Vector2 a, out Vector2 b, out Vector2 tangent)
+	{
+		Vector2 outward = riverDirections[direction];
+		tangent = new Vector2(outward.y, -outward.x);
+		Vector2 edgeCenter = outward * sqrt3Over2;
+		a = edgeCenter - tangent * 0.5f;
+		b = edgeCenter + tangent * 0.5f;
 	}
 
 	Vector2Int NeighborOffset(int x, int z, int direction)
@@ -506,7 +703,8 @@ public sealed class HexSurfaceSampler
 				terrainStyle.hfMarshMixer,
 				terrainStyle.hfHillHeight, terrainStyle.hfHillMixer,
 				terrainStyle.hfMountainHeight, terrainStyle.hfMountainMixer,
-				terrainStyle.hfSeaHeight, terrainStyle.hfSeaMixer
+				terrainStyle.hfSeaHeight, terrainStyle.hfSeaMixer,
+				terrainStyle.hfRiverOriginalMixer
 			};
 			for (int i = 0; i < textures.Length; i++)
 			{

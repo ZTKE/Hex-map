@@ -115,9 +115,14 @@ public class HexMesh : MonoBehaviour
 		{
 			return;
 		}
-		meshCollider.enabled = value;
-		if (!value)
+		if (value)
 		{
+			meshCollider.sharedMesh = hexMesh;
+			meshCollider.enabled = true;
+		}
+		else
+		{
+			meshCollider.enabled = false;
 			meshCollider.sharedMesh = null;
 		}
 	}
