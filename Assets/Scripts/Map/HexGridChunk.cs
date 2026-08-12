@@ -50,8 +50,11 @@ public partial class HexGridChunk : MonoBehaviour
 	HexSurfaceCollider surfaceCollider;
 	bool useHFOriginalSurface;
 	bool interactionEnabled = true;
+	bool globalOceanMode;
 
 	public bool InteractionEnabled => interactionEnabled;
+
+	public bool GlobalOceanMode => globalOceanMode;
 
 	int[] cellIndices;
 	RectTransform[] cellUIs;
@@ -179,6 +182,31 @@ public partial class HexGridChunk : MonoBehaviour
 			{
 				terrain.SetColliderEnabled(true);
 			}
+		}
+	}
+
+	/// <summary>
+	/// Hide only the chunk-local water surfaces while the grid-wide ocean owns
+	/// the sea. Terrain, relief, roads, features, and rivers remain detailed.
+	/// </summary>
+	public void SetGlobalOceanMode(bool value)
+	{
+		globalOceanMode = value;
+		SetMeshRendererEnabled(water, !value);
+		SetMeshRendererEnabled(waterShore, !value);
+		SetMeshRendererEnabled(estuaries, !value);
+	}
+
+	static void SetMeshRendererEnabled(HexMesh mesh, bool value)
+	{
+		if (!mesh)
+		{
+			return;
+		}
+		MeshRenderer renderer = mesh.GetComponent<MeshRenderer>();
+		if (renderer)
+		{
+			renderer.enabled = value;
 		}
 	}
 

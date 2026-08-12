@@ -27,6 +27,14 @@ public class HexMapCamera : MonoBehaviour
 	[SerializeField]
 	bool useHighAltitudeOverview;
 
+	[Tooltip("Enable the continuous ocean when zoom is at or below this value.")]
+	[SerializeField, Range(0.15f, 0.85f)]
+	float globalOceanEnableZoom = 0.62f;
+
+	[Tooltip("Return to chunk water above this value. The gap prevents flicker.")]
+	[SerializeField, Range(0.2f, 0.95f)]
+	float globalOceanDisableZoom = 0.70f;
+
 	[SerializeField, Min(0.01f)]
 	float moveSmoothTime = 0.12f;
 
@@ -50,6 +58,7 @@ public class HexMapCamera : MonoBehaviour
 	bool defaultOcclusionCulling;
 	bool defaultRenderShadows;
 	bool overviewRenderingMode;
+	bool globalOceanRequested;
 
 	static HexMapCamera instance;
 
@@ -194,11 +203,36 @@ public class HexMapCamera : MonoBehaviour
 
 		float angle = Mathf.Lerp(swivelMinZoom, swivelMaxZoom, zoom);
 		swivel.localRotation = Quaternion.Euler(angle, 0f, 0f);
+		bool requestOverview =
+			useHighAltitudeOverview && zoom < effectiveOverviewThreshold;
 		grid.UpdateCameraView(
 			transform.position,
-			useHighAltitudeOverview && zoom < effectiveOverviewThreshold,
-			GetRequestedStreamingRadii());
+			requestOverview,
+			GetRequestedStreamingRadii(),
+			EvaluateGlobalOceanRequest(requestOverview));
 		ApplyOverviewRenderingMode(grid.IsOverviewMode);
+	}
+
+	bool EvaluateGlobalOceanRequest(bool requestOverview)
+	{
+		if (requestOverview)
+		{
+			globalOceanRequested = false;
+			return false;
+		}
+
+		// Code fallbacks also cover a live editor object restored from an older
+		// Enter Play Mode backup that predates these serialized fields.
+		float enableZoom = globalOceanEnableZoom >= 0.3f ?
+			Mathf.Clamp(globalOceanEnableZoom, 0.15f, 0.85f) : 0.62f;
+		float configuredDisable = globalOceanDisableZoom > enableZoom ?
+			globalOceanDisableZoom : 0.70f;
+		float disableZoom = Mathf.Clamp(
+			Mathf.Max(configuredDisable, enableZoom + 0.03f),
+			enableZoom + 0.03f, 0.95f);
+		globalOceanRequested = globalOceanRequested ?
+			zoom < disableZoom : zoom <= enableZoom;
+		return globalOceanRequested;
 	}
 
 	void ApplyOverviewRenderingMode(bool overview, bool force = false)
@@ -281,7 +315,11 @@ public class HexMapCamera : MonoBehaviour
 			useHighAltitudeOverview && zoom <
 				(overviewZoomThreshold >= 0.5f ?
 					overviewZoomThreshold : 0.72f),
-			GetRequestedStreamingRadii());
+			GetRequestedStreamingRadii(),
+			EvaluateGlobalOceanRequest(
+				useHighAltitudeOverview && zoom <
+					(overviewZoomThreshold >= 0.5f ?
+						overviewZoomThreshold : 0.72f)));
 	}
 
 	Vector3 ClampPosition(Vector3 position)

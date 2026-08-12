@@ -15872,6 +15872,8 @@ MonoBehaviour:
   rotationSpeed: 180
   overviewZoomThreshold: 0.72
   useHighAltitudeOverview: 0
+  globalOceanEnableZoom: 0.62
+  globalOceanDisableZoom: 0.7
   moveSmoothTime: 0.12
   overviewMoveSpeed: 950
   grid: {fileID: 1571186511}

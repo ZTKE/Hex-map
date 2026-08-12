@@ -97,6 +97,8 @@ public class HexGrid : MonoBehaviour
 	bool gridUIVisible = true;
 	bool overviewMode;
 	bool overviewDirty = true;
+	bool globalOceanMode;
+	bool globalOceanDirty = true;
 	int pendingActivationCursor;
 	int pendingInteractionCursor;
 	int visibleCenterChunkX = int.MinValue;
@@ -170,6 +172,12 @@ public class HexGrid : MonoBehaviour
 	/// Whether the streamed map is currently using only its cheap overview.
 	/// </summary>
 	public bool IsOverviewMode => overviewMode;
+
+	/// <summary>
+	/// Whether one continuous sea replaces chunk-local water in the current
+	/// medium / far view.
+	/// </summary>
+	public bool IsGlobalOceanMode => globalOceanMode;
 
 	public int PoliticalBorderSegmentCount => overview ?
 		overview.PoliticalBorderSegmentCount : 0;
@@ -246,6 +254,7 @@ public class HexGrid : MonoBehaviour
 	HexCellShaderData cellShaderData;
 	HexSurfaceSampler surfaceSampler;
 	HexMapOverview overview;
+	HexGlobalOcean globalOcean;
 	Color32[] countryPalette;
 
 	void Awake()
@@ -262,6 +271,11 @@ public class HexGrid : MonoBehaviour
 		if (!overview)
 		{
 			overview = gameObject.AddComponent<HexMapOverview>();
+		}
+		globalOcean = GetComponent<HexGlobalOcean>();
+		if (!globalOcean)
+		{
+			globalOcean = gameObject.AddComponent<HexGlobalOcean>();
 		}
 		CreateMap(CellCountX, CellCountZ, Wrapping);
 	}
@@ -320,9 +334,15 @@ public class HexGrid : MonoBehaviour
 		{
 			overview.SetVisible(false);
 		}
+		if (globalOcean)
+		{
+			globalOcean.SetVisible(false);
+		}
 		ClearPoliticalData();
 		overviewMode = false;
 		overviewDirty = true;
+		globalOceanMode = false;
+		globalOceanDirty = true;
 		InvalidateStreamingWindow();
 		if (columns != null)
 		{
@@ -627,8 +647,10 @@ public class HexGrid : MonoBehaviour
 	/// </summary>
 	public void UpdateCameraView(
 		Vector3 cameraWorldPosition, bool requestOverview,
-		Vector2Int requestedChunkRadii = default)
+		Vector2Int requestedChunkRadii = default,
+		bool requestGlobalOcean = false)
 	{
+		SetGlobalOceanMode(requestGlobalOcean && !requestOverview);
 		if (!usesChunkStreaming)
 		{
 			if (overview)
@@ -670,6 +692,57 @@ public class HexGrid : MonoBehaviour
 			CenterMap(localPosition.x);
 		}
 		UpdateVisibleChunks(cameraWorldPosition, requestedChunkRadii);
+	}
+
+	/// <summary>
+	/// Switch between chunk-local water and one grid-wide water surface. The
+	/// transition invalidates only the render window; logical cells stay loaded.
+	/// </summary>
+	public void SetGlobalOceanMode(bool value)
+	{
+		if (value)
+		{
+			EnsureGlobalOcean();
+			if (globalOceanDirty && globalOcean)
+			{
+				globalOcean.Rebuild(this);
+				globalOceanDirty = !globalOcean.IsReady;
+			}
+			value = globalOcean && globalOcean.IsReady;
+		}
+
+		if (globalOcean)
+		{
+			globalOcean.SetVisible(value);
+		}
+		if (globalOceanMode == value)
+		{
+			return;
+		}
+
+		globalOceanMode = value;
+		foreach (int chunkIndex in activeChunkIndices)
+		{
+			HexGridChunk chunk = chunks[chunkIndex];
+			if (chunk)
+			{
+				chunk.SetGlobalOceanMode(value);
+			}
+		}
+		InvalidateStreamingWindow();
+	}
+
+	void EnsureGlobalOcean()
+	{
+		if (globalOcean)
+		{
+			return;
+		}
+		globalOcean = GetComponent<HexGlobalOcean>();
+		if (!globalOcean)
+		{
+			globalOcean = gameObject.AddComponent<HexGlobalOcean>();
+		}
 	}
 
 	void EnsureOverview()
@@ -761,7 +834,17 @@ public class HexGrid : MonoBehaviour
 				{
 					continue;
 				}
-				desiredChunkIndices.Add(x + z * chunkCountX);
+				int chunkIndex = x + z * chunkCountX;
+				// Keep the small interaction window even over open water so picking
+				// and editing still work. Everywhere else the global ocean makes a
+				// pure-water render chunk redundant.
+				if (globalOceanMode &&
+					!ShouldChunkHaveInteraction(chunkIndex) &&
+					IsPureOceanChunk(chunkIndex))
+				{
+					continue;
+				}
+				desiredChunkIndices.Add(chunkIndex);
 			}
 		}
 
@@ -783,6 +866,30 @@ public class HexGrid : MonoBehaviour
 		ProcessPendingChunkActivations(Mathf.Max(
 			chunkActivationsPerFrame, detailedWorldActivationBudget));
 		ProcessPendingInteractionActivations(1);
+	}
+
+	bool IsPureOceanChunk(int chunkIndex)
+	{
+		int chunkX = chunkIndex % chunkCountX;
+		int chunkZ = chunkIndex / chunkCountX;
+		int xMin = chunkX * HexMetrics.chunkSizeX;
+		int zMin = chunkZ * HexMetrics.chunkSizeZ;
+		int xMax = Mathf.Min(xMin + HexMetrics.chunkSizeX, CellCountX);
+		int zMax = Mathf.Min(zMin + HexMetrics.chunkSizeZ, CellCountZ);
+		bool hasCell = false;
+		for (int z = zMin; z < zMax; z++)
+		{
+			int row = z * CellCountX;
+			for (int x = xMin; x < xMax; x++)
+			{
+				hasCell = true;
+				if (!CellData[row + x].IsUnderwater)
+				{
+					return false;
+				}
+			}
+		}
+		return hasCell;
 	}
 
 	void RebuildPendingChunkActivations()
@@ -940,6 +1047,7 @@ public class HexGrid : MonoBehaviour
 
 		chunk.transform.SetParent(columns[chunkX], false);
 		chunk.Grid = this;
+		chunk.SetGlobalOceanMode(globalOceanMode);
 		chunk.SetInteractionEnabled(
 			!usesChunkStreaming || ShouldChunkHaveInteraction(chunkIndex), false);
 		chunks[chunkIndex] = chunk;
@@ -1041,6 +1149,10 @@ public class HexGrid : MonoBehaviour
 	public void RefreshCell(int cellIndex)
 	{
 		overviewDirty = true;
+		if (globalOceanMode)
+		{
+			InvalidateStreamingWindow();
+		}
 		HexGridChunk chunk = GetChunkForCell(cellIndex);
 		if (chunk)
 		{
@@ -1094,6 +1206,10 @@ public class HexGrid : MonoBehaviour
 	public void RefreshCellWithDependents (int cellIndex)
 	{
 		overviewDirty = true;
+		if (globalOceanMode)
+		{
+			InvalidateStreamingWindow();
+		}
 		cellShaderData.RefreshTerrainShapeWithDependents(cellIndex);
 		HexGridChunk chunk = GetChunkForCell(cellIndex);
 		if (chunk)
@@ -1289,6 +1405,13 @@ public class HexGrid : MonoBehaviour
 	public void RefreshAllCells()
 	{
 		overviewDirty = true;
+		globalOceanDirty = true;
+		if (globalOceanMode)
+		{
+			globalOcean.Rebuild(this);
+			globalOceanDirty = !globalOcean.IsReady;
+			InvalidateStreamingWindow();
+		}
 		RefreshWaterDepths();
 		for (int i = 0; i < CellData.Length; i++)
 		{
