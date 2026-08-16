@@ -125,8 +125,6 @@ public class HexMapGenerator : MonoBehaviour
 
 	List<HexDirection> flowDirections = new();
 
-	bool preserveLandWaterMask;
-
 	struct Biome
 	{
 		public int terrain, plant;
@@ -137,6 +135,54 @@ public class HexMapGenerator : MonoBehaviour
 			this.plant = plant;
 		}
 	}
+
+	/// <summary>
+	/// One complete HoneyFramework terrain definition adapted to the compact
+	/// logical fields used by this project. HF selects a definition first; its
+	/// ground, relief, foreground species, count, and colour then travel together.
+	/// Keeping that coupling prevents coast distance or a later biome pass from
+	/// accidentally deciding where forests and mountains may exist.
+	/// </summary>
+	readonly struct HFTerrainDefinition
+	{
+		public readonly int terrain;
+		public readonly HexLandform landform;
+		public readonly HexVegetation vegetation;
+		public readonly byte vegetationDensity;
+		public readonly HexVegetationTint vegetationTint;
+
+		public HFTerrainDefinition(
+			int terrain,
+			HexLandform landform,
+			HexVegetation vegetation,
+			int vegetationDensity,
+			HexVegetationTint vegetationTint = HexVegetationTint.Natural)
+		{
+			this.terrain = terrain;
+			this.landform = landform;
+			this.vegetation = vegetation;
+			this.vegetationDensity =
+				(byte)Mathf.Clamp(vegetationDensity, 0, 100);
+			this.vegetationTint = vegetationTint;
+		}
+	}
+
+	// These are the seven normal definitions in HoneyFramework.MHTerrain.xml.
+	// Density converts each definition's authored sprite count to this project's
+	// 0..100 foreground scale: Dirt 10, Mountain 24, dense Plains 85, and the
+	// second forested Plains 55 sprites. Hill, bare Plains, and Marsh have none.
+	static readonly HFTerrainDefinition[] hfTerrainDefinitions =
+	{
+		new(0, HexLandform.Flat, HexVegetation.Deadwood, 14,
+			HexVegetationTint.Dry),
+		new(1, HexLandform.Mountain, HexVegetation.Mixed, 28),
+		new(1, HexLandform.Hill, HexVegetation.Mixed, 0),
+		new(1, HexLandform.Flat, HexVegetation.Mixed, 0),
+		new(1, HexLandform.Flat, HexVegetation.Mixed, 100),
+		new(2, HexLandform.Flat, HexVegetation.Mixed, 0),
+		new(1, HexLandform.Flat, HexVegetation.ColdMixed, 79,
+			HexVegetationTint.DeepGreen)
+	};
 
 	static readonly float[] temperatureBands = { 0.1f, 0.3f, 0.6f };
 
@@ -192,10 +238,7 @@ public class HexMapGenerator : MonoBehaviour
 		CreateRegions();
 		CreateLand();
 		ErodeLand();
-		CreateClimate();
-		CreateRivers();
-		SetTerrainType();
-		SetLandforms();
+		GenerateHFLand(x, z);
 		grid.RefreshAllCells();
 
 		Random.state = originalRandomState;
@@ -254,24 +297,13 @@ public class HexMapGenerator : MonoBehaviour
 			sourcePixels, sourceWidth, sourceHeight, x, z, oceanColor,
 			sourceVMin, sourceVMax);
 		landCells = ApplyMaskedElevation(landMask, x, z);
-		int originalRiverPercentage = riverPercentage;
-		// A normal random map is tiny compared with the imported world. Reusing its
-		// percentage verbatim creates continent-spanning walls of rivers at global
-		// scale, so use a restrained world-map budget for the baked source.
-		riverPercentage = Mathf.Min(riverPercentage, 2);
-		preserveLandWaterMask = true;
 		try
 		{
-			CreateClimate();
-			CreateRivers();
-			SetTerrainType();
-			SetLandforms();
+			GenerateHFLand(x, z);
 			grid.RefreshAllCells();
 		}
 		finally
 		{
-			preserveLandWaterMask = false;
-			riverPercentage = originalRiverPercentage;
 			Random.state = originalRandomState;
 		}
 		return true;
@@ -343,10 +375,8 @@ public class HexMapGenerator : MonoBehaviour
 	int ApplyMaskedElevation(bool[] landMask, int width, int height)
 	{
 		int count = 0;
-		float seedOffset = (seed % 8191) * 0.00173f;
 		for (int row = 0, index = 0; row < height; row++)
 		{
-			float v = (row + 0.5f) / height;
 			for (int column = 0; column < width; column++, index++)
 			{
 				HexCellData cell = grid.CellData[index];
@@ -364,28 +394,8 @@ public class HexMapGenerator : MonoBehaviour
 				}
 
 				count += 1;
-				bool coast = false;
-				for (HexDirection direction = HexDirection.NE;
-					direction <= HexDirection.NW; direction++)
-				{
-					if (grid.TryGetCellIndex(
-						cell.coordinates.Step(direction), out int neighborIndex) &&
-						!landMask[neighborIndex])
-					{
-						coast = true;
-						break;
-					}
-				}
-
-				float u = (column + 0.5f) / width;
-				float broadNoise = SampleWrappedNoise(u, v, 2.4f, seedOffset);
-				float detailNoise = SampleWrappedNoise(
-					u, v, 7.5f, seedOffset + 19.37f);
-				float elevationNoise = broadNoise * 0.72f + detailNoise * 0.28f;
-				int elevation = coast ? waterLevel : waterLevel +
-					Mathf.Clamp(Mathf.RoundToInt(elevationNoise * 5f), 0, 5);
 				cell.values = cell.values.
-					WithElevation(elevation).
+					WithElevation(waterLevel).
 					WithTerrainTypeIndex(1).
 					WithPlantLevel(0);
 				cell.landform = HexLandform.Flat;
@@ -398,16 +408,56 @@ public class HexMapGenerator : MonoBehaviour
 		return count;
 	}
 
-	static float SampleWrappedNoise(
-		float u, float v, float frequency, float offset)
+	/// <summary>
+	/// Assign complete HF definitions to every dry cell using HoneyFramework's
+	/// default Random generator mode. Every hex independently selects one of the
+	/// authored definitions, then its rotated mixer stamp overlaps its neighbors.
+	/// Random.InitState at the generation entry point keeps the result repeatable.
+	/// </summary>
+	void GenerateHFLand(int width, int height)
 	{
-		float x = Mathf.Repeat(u, 1f) * frequency;
-		float y = v * frequency + offset * 0.37f;
-		float left = Mathf.PerlinNoise(x + offset, y);
-		float right = Mathf.PerlinNoise(x - frequency + offset, y);
-		float blend = u * u * (3f - 2f * u);
-		return Mathf.Lerp(left, right, blend);
+		for (int row = 0, index = 0; row < height; row++)
+		{
+			for (int column = 0; column < width; column++, index++)
+			{
+				HexCellData cell = grid.CellData[index];
+				bool underwater = cell.IsUnderwater;
+				cell.values = cell.values.
+					WithWaterLevel(waterLevel).
+					WithElevation(underwater ? waterLevel - 1 : waterLevel);
+				cell.hfRiverEdges = 0;
+				cell.terrainRotation = (byte)Random.Range(0, 6);
+
+				if (underwater)
+				{
+					cell.values = cell.values.
+						WithTerrainTypeIndex(0).
+						WithPlantLevel(0);
+					cell.landform = HexLandform.Flat;
+					cell.vegetation = HexVegetation.Mixed;
+					cell.vegetationDensity = 0;
+					cell.vegetationTint = HexVegetationTint.Natural;
+					grid.CellData[index] = cell;
+					continue;
+				}
+
+				HFTerrainDefinition definition = hfTerrainDefinitions[
+					Random.Range(0, hfTerrainDefinitions.Length)];
+				int plantLevel = GetHFPlantLevel(definition.vegetationDensity);
+				cell.values = cell.values.
+					WithTerrainTypeIndex(definition.terrain).
+					WithPlantLevel(plantLevel);
+				cell.landform = definition.landform;
+				cell.vegetation = definition.vegetation;
+				cell.vegetationDensity = definition.vegetationDensity;
+				cell.vegetationTint = definition.vegetationTint;
+				grid.CellData[index] = cell;
+			}
+		}
 	}
+
+	static int GetHFPlantLevel(int density) =>
+		density <= 0 ? 0 : density <= 33 ? 1 : density <= 66 ? 2 : 3;
 
 	void CreateRegions()
 	{
@@ -1005,8 +1055,7 @@ public class HexMapGenerator : MonoBehaviour
 					return 0;
 				}
 
-				if (!preserveLandWaterMask &&
-					minNeighborElevation >= cell.Elevation)
+				if (minNeighborElevation >= cell.Elevation)
 				{
 					cell.values = cell.values.WithWaterLevel(
 						minNeighborElevation);
@@ -1033,8 +1082,7 @@ public class HexMapGenerator : MonoBehaviour
 
 			length += 1;
 
-			if (!preserveLandWaterMask &&
-				minNeighborElevation >= cell.Elevation &&
+			if (minNeighborElevation >= cell.Elevation &&
 				Random.value < extraLakeProbability)
 			{
 				cell.values = cell.values.WithWaterLevel(cell.Elevation);

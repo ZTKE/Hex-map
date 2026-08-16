@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
 public sealed class DefaultWorldMapBootstrap : MonoBehaviour
 {
-	public const int CurrentMapFileVersion = 11;
+	public const int CurrentMapFileVersion = 12;
 	public const string DefaultResourcePath = "Maps/DefaultWorld";
 
 	HexGrid grid;
@@ -78,6 +78,7 @@ public sealed class DefaultWorldMapBootstrap : MonoBehaviour
 			Debug.Log(
 				$"Loaded default flat world: {grid.CellCountX}x{grid.CellCountZ}, " +
 				$"{grid.CellData.Length:N0} cells, wrapping={grid.Wrapping}, " +
+				$"cities={grid.CityCount:N0}, " +
 				$"overview={grid.IsOverviewMode}, politics={grid.HasPoliticalData}, " +
 				$"borders={grid.PoliticalBorderSegmentCount:N0}, " +
 				$"activeChunks={grid.ActiveChunkCount}, " +

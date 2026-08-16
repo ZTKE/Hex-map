@@ -2,6 +2,7 @@
 using UnityEngine.UI;
 using System.IO;
 using System.Collections.Generic;
+using HexMap.WorldData;
 
 /// <summary>
 /// Component that represents an entire hexagon map.
@@ -31,6 +32,12 @@ public class HexGrid : MonoBehaviour
 	/// loading. Editor-only transient state must not cross this boundary.
 	/// </summary>
 	public event System.Action MapReset;
+
+	/// <summary>
+	/// Raised when the sparse city document is replaced independently of a full
+	/// map reset (for example by the editor world baker).
+	/// </summary>
+	public event System.Action CityDataChanged;
 
 	[SerializeField]
 	Text cellLabelPrefab;
@@ -183,6 +190,14 @@ public class HexGrid : MonoBehaviour
 		overview.PoliticalBorderSegmentCount : 0;
 
 	/// <summary>
+	/// Sparse city records bound to cells in the current map. A newly-created
+	/// map intentionally starts with an empty list.
+	/// </summary>
+	public IReadOnlyList<WorldCityData> Cities => cities;
+
+	public int CityCount => cities.Count;
+
+	/// <summary>
 	/// Whether cells on this map carry political ownership and a color palette.
 	/// </summary>
 	public bool HasPoliticalData => countryPalette != null &&
@@ -247,6 +262,39 @@ public class HexGrid : MonoBehaviour
 		overviewDirty = true;
 	}
 
+	/// <summary>
+	/// Replace the current map's city records. Invalid or submerged bindings are
+	/// rejected so gameplay code can safely treat every city as a land location.
+	/// </summary>
+	public void SetCities(IEnumerable<WorldCityData> source)
+	{
+		cities.Clear();
+		if (source != null && CellData != null)
+		{
+			foreach (WorldCityData city in source)
+			{
+				if (city == null || city.targetCellIndex < 0 ||
+					city.targetCellIndex >= CellData.Length ||
+					CellData[city.targetCellIndex].IsUnderwater)
+				{
+					continue;
+				}
+				cities.Add(city);
+			}
+		}
+		CityDataChanged?.Invoke();
+	}
+
+	public void ClearCityData()
+	{
+		if (cities.Count == 0)
+		{
+			return;
+		}
+		cities.Clear();
+		CityDataChanged?.Invoke();
+	}
+
 #pragma warning disable IDE0044 // Add readonly modifier
 	List<HexUnit> units = new();
 #pragma warning restore IDE0044 // Add readonly modifier
@@ -255,7 +303,9 @@ public class HexGrid : MonoBehaviour
 	HexSurfaceSampler surfaceSampler;
 	HexMapOverview overview;
 	HexGlobalOcean globalOcean;
+	HexCityLayer cityLayer;
 	Color32[] countryPalette;
+	readonly List<WorldCityData> cities = new();
 
 	void Awake()
 	{
@@ -276,6 +326,13 @@ public class HexGrid : MonoBehaviour
 		if (!globalOcean)
 		{
 			globalOcean = gameObject.AddComponent<HexGlobalOcean>();
+		}
+		cityLayer = GetComponentInChildren<HexCityLayer>(true);
+		if (!cityLayer)
+		{
+			GameObject cityLayerObject = new("World Cities");
+			cityLayerObject.transform.SetParent(transform, false);
+			cityLayer = cityLayerObject.AddComponent<HexCityLayer>();
 		}
 		CreateMap(CellCountX, CellCountZ, Wrapping);
 	}
@@ -339,6 +396,7 @@ public class HexGrid : MonoBehaviour
 			globalOcean.SetVisible(false);
 		}
 		ClearPoliticalData();
+		ClearCityData();
 		overviewMode = false;
 		overviewDirty = true;
 		globalOceanMode = false;
@@ -1478,6 +1536,12 @@ public class HexGrid : MonoBehaviour
 		{
 			units[i].Save(writer);
 		}
+
+		writer.Write(cities.Count);
+		for (int i = 0; i < cities.Count; i++)
+		{
+			WriteCity(writer, cities[i]);
+		}
 	}
 
 	/// <summary>
@@ -1490,6 +1554,7 @@ public class HexGrid : MonoBehaviour
 		ClearPath();
 		ClearUnits();
 		ClearPoliticalData();
+		ClearCityData();
 		int x = 20, z = 15;
 		if (header >= 1)
 		{
@@ -1611,9 +1676,68 @@ public class HexGrid : MonoBehaviour
 			}
 		}
 
+		if (header >= 12)
+		{
+			int cityCount = reader.ReadInt32();
+			if (cityCount < 0 || cityCount > 100_000)
+			{
+				throw new InvalidDataException(
+					$"Map city count {cityCount:N0} is outside the supported range.");
+			}
+			for (int i = 0; i < cityCount; i++)
+			{
+				WorldCityData city = ReadCity(reader);
+				if (city.targetCellIndex >= 0 &&
+					city.targetCellIndex < CellData.Length &&
+					!CellData[city.targetCellIndex].IsUnderwater)
+				{
+					cities.Add(city);
+				}
+			}
+		}
+
 		cellShaderData.ImmediateMode = originalImmediateMode;
 		MapReset?.Invoke();
 	}
+
+	static void WriteCity(BinaryWriter writer, WorldCityData city)
+	{
+		writer.Write(city.name ?? string.Empty);
+		writer.Write(city.sourceTileId);
+		writer.Write(city.sourceCountryId);
+		writer.Write(city.countryId);
+		writer.Write(city.areaId);
+		writer.Write(city.terrainId);
+		writer.Write(city.sourceSpherePosition.x);
+		writer.Write(city.sourceSpherePosition.y);
+		writer.Write(city.sourceSpherePosition.z);
+		writer.Write(city.longitude);
+		writer.Write(city.latitude);
+		writer.Write(city.u);
+		writer.Write(city.v);
+		writer.Write(city.targetCellIndex);
+	}
+
+	static WorldCityData ReadCity(BinaryReader reader) => new()
+	{
+		name = reader.ReadString(),
+		sourceTileId = reader.ReadInt32(),
+		sourceCountryId = reader.ReadInt32(),
+		countryId = reader.ReadInt32(),
+		areaId = reader.ReadInt32(),
+		terrainId = reader.ReadInt32(),
+		sourceSpherePosition = new SerializableVector3
+		{
+			x = reader.ReadSingle(),
+			y = reader.ReadSingle(),
+			z = reader.ReadSingle()
+		},
+		longitude = reader.ReadDouble(),
+		latitude = reader.ReadDouble(),
+		u = reader.ReadDouble(),
+		v = reader.ReadDouble(),
+		targetCellIndex = reader.ReadInt32()
+	};
 
 	/// <summary>
 	/// Remove submerged, out-of-map, and one-sided road links from loaded maps.

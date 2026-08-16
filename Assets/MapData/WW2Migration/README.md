@@ -22,10 +22,13 @@ above Iceland, and does not stretch the remaining landmass.
 
 The bake resolves every flat land cell's source color through the authoritative
 `vert_buf_data_5.bytes` ID/color pairs and stores a `ushort countryId` directly
-on the cell. Map format version 11 saves both these IDs and their compact color
-palette. The high-altitude political view is rebuilt from cell ownership and
-draws borders along real shared hex edges; it no longer uses a precolored PNG
-overlay. Manually creating a new map starts with country ID zero everywhere.
+on the cell. Map format version 12 saves both these IDs, their compact color
+palette, and the sparse city list. City unit vectors use the exact same
+equirectangular projection and latitude crop as the country raster, then bind to
+the nearest matching land hex. The high-altitude political view is rebuilt from
+cell ownership and draws borders along real shared hex edges; it no longer uses
+a precolored PNG overlay. Manually creating a new map starts with country ID zero
+and no cities.
 
 Do not use the old `EarthTerritories_ww2.png` as migration authority.
 

@@ -20,12 +20,12 @@ public class HexMapCamera : MonoBehaviour
 	float rotationSpeed;
 
 	[SerializeField, Range(0.5f, 0.9f)]
-	float overviewZoomThreshold = 0.72f;
+	float overviewZoomThreshold = 0.78f;
 
 	[Tooltip("When disabled, every zoom level renders real streamed chunks. " +
 		"The high-altitude overview is not shown as a fallback.")]
 	[SerializeField]
-	bool useHighAltitudeOverview;
+	bool useHighAltitudeOverview = true;
 
 	[Tooltip("Enable the continuous ocean when zoom is at or below this value.")]
 	[SerializeField, Range(0.15f, 0.85f)]
@@ -196,7 +196,7 @@ public class HexMapCamera : MonoBehaviour
 	{
 		zoom = Mathf.Clamp01(value);
 		float effectiveOverviewThreshold = overviewZoomThreshold >= 0.5f ?
-			overviewZoomThreshold : 0.72f;
+			overviewZoomThreshold : 0.78f;
 
 		float distance = Mathf.Lerp(stickMinZoom, stickMaxZoom, zoom);
 		stick.localPosition = new Vector3(0f, 0f, distance);
@@ -314,12 +314,12 @@ public class HexMapCamera : MonoBehaviour
 			transform.position,
 			useHighAltitudeOverview && zoom <
 				(overviewZoomThreshold >= 0.5f ?
-					overviewZoomThreshold : 0.72f),
+					overviewZoomThreshold : 0.78f),
 			GetRequestedStreamingRadii(),
 			EvaluateGlobalOceanRequest(
 				useHighAltitudeOverview && zoom <
 					(overviewZoomThreshold >= 0.5f ?
-						overviewZoomThreshold : 0.72f)));
+						overviewZoomThreshold : 0.78f)));
 	}
 
 	Vector3 ClampPosition(Vector3 position)

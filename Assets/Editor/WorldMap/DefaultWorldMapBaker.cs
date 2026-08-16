@@ -36,7 +36,7 @@ public static class DefaultWorldMapBaker
 		EditorApplication.delayCall += ProcessPendingRequest;
 	}
 
-	[MenuItem("Tools/World Map/Bake Default Flat World")]
+	[MenuItem("Tools/World Map/Bake Default HF World")]
 	public static void BeginBake()
 	{
 		if (EditorApplication.isCompiling || EditorApplication.isUpdating)
@@ -108,10 +108,13 @@ public static class DefaultWorldMapBaker
 				TargetWidth, TargetHeight, true, WorldSeed, OceanColor,
 				SourceVMin, SourceVMax))
 			{
-				throw new InvalidOperationException("Flat world generation failed.");
+				throw new InvalidOperationException("HF world generation failed.");
 			}
 			int ownedCellCount = AssignPoliticalData(
 				grid, pixels, width, height, out int countryCount);
+			// Cities use the same source UV crop and are persisted in map v12.
+			DefaultWorldCityImporter.ImportResult cityImport =
+				DefaultWorldCityImporter.Import(grid, SourceVMin, SourceVMax);
 
 			string outputPath = Path.Combine(ProjectRoot, OutputAssetPath);
 			Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
@@ -125,21 +128,44 @@ public static class DefaultWorldMapBaker
 				OutputAssetPath, ImportAssetOptions.ForceSynchronousImport);
 			stopwatch.Stop();
 			int landCount = 0;
+			int vegetatedCellCount = 0;
+			int hillCount = 0;
+			int mountainCount = 0;
 			for (int i = 0; i < grid.CellData.Length; i++)
 			{
-				if (!grid.CellData[i].IsUnderwater)
+				HexCellData cell = grid.CellData[i];
+				if (!cell.IsUnderwater)
 				{
 					landCount += 1;
+					if (cell.VegetationDensity > 0)
+					{
+						vegetatedCellCount += 1;
+					}
+					if (cell.landform == HexLandform.Hill)
+					{
+						hillCount += 1;
+					}
+					else if (cell.landform == HexLandform.Mountain)
+					{
+						mountainCount += 1;
+					}
 				}
 			}
 			long outputBytes = new FileInfo(outputPath).Length;
 			string message =
-				$"Default flat world baked: {TargetWidth}x{TargetHeight} " +
+				$"Default HF world baked: {TargetWidth}x{TargetHeight} " +
 				$"({grid.CellData.Length:N0} cells), land={landCount:N0}, " +
 				$"water={grid.CellData.Length - landCount:N0}, " +
+				$"HF relief={landCount - hillCount - mountainCount:N0} flat/" +
+				$"{hillCount:N0} hill/{mountainCount:N0} mountain, " +
+				$"vegetated={vegetatedCellCount:N0} " +
+				$"({vegetatedCellCount / Mathf.Max(1f, landCount):P1}), " +
 				$"latitude crop={SourceVMin:P0}-{SourceVMax:P0}, " +
 				$"file={outputBytes / (1024f * 1024f):F1} MiB, " +
 				$"countries={countryCount:N0}, ownedCells={ownedCellCount:N0}, " +
+				$"cities={cityImport.imported:N0}, " +
+				$"cityLandSnaps={cityImport.relocatedToLand:N0}, " +
+				$"sharedCityCells={cityImport.sharedCells:N0}, " +
 				$"time={stopwatch.Elapsed.TotalSeconds:F1}s.\n{outputPath}";
 			UnityEngine.Debug.Log(message);
 			if (!silent)

@@ -3,51 +3,20 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 /// <summary>
-/// High-altitude renderer for streamed maps. Its surface shader reads the same
-/// logical textures and HF source materials as the detailed map, so the ground
-/// is not replaced by a simplified land/sea thumbnail. This component only
-/// rasterizes the translucent political tint and builds the country borders.
+/// Strategic mid/far renderer for streamed maps. It deliberately owns a
+/// separate parchment-style surface so the detailed HF terrain remains a
+/// near-view concern. Country colors, broad logical relief, coast ink, and
+/// political borders are baked from the resident cell data.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class HexMapOverview : MonoBehaviour
 {
-	readonly struct BorderEdge
-	{
-		public readonly Vector3 a;
-		public readonly Vector3 b;
-
-		public BorderEdge(Vector3 a, Vector3 b)
-		{
-			this.a = a;
-			this.b = b;
-		}
-	}
-
-	readonly struct BorderPointKey : System.IEquatable<BorderPointKey>
-	{
-		readonly int x;
-		readonly int z;
-
-		public BorderPointKey(Vector3 point)
-		{
-			x = Mathf.RoundToInt(point.x * 100f);
-			z = Mathf.RoundToInt(point.z * 100f);
-		}
-
-		public bool Equals(BorderPointKey other) =>
-			x == other.x && z == other.z;
-
-		public override bool Equals(object obj) =>
-			obj is BorderPointKey other && Equals(other);
-
-		public override int GetHashCode() => unchecked(x * 397) ^ z;
-	}
-
 	const string overviewObjectName = "World Overview";
 	const string borderObjectName = "World Political Borders";
 	const int politicalRasterScale = 2;
-	const float borderWidth = 5.5f;
-	static readonly Color32 noPoliticalTint = new(255, 255, 255, 0);
+	const float borderWidth = 4.2f;
+	static readonly Color32 oceanAtlasPixel = new(199, 214, 219, 0);
+	static readonly Color32 unownedLandAtlasPixel = new(224, 214, 184, 255);
 
 	GameObject overviewObject;
 	GameObject borderObject;
@@ -56,7 +25,8 @@ public sealed class HexMapOverview : MonoBehaviour
 	Material overviewMaterial;
 	Material borderMaterial;
 	Texture2D overviewTexture;
-	bool hasPoliticalBorders;
+	Texture2D overviewReliefTexture;
+	bool hasMapBorders;
 	int politicalBorderSegmentCount;
 
 	public bool IsVisible => overviewObject && overviewObject.activeSelf;
@@ -79,6 +49,7 @@ public sealed class HexMapOverview : MonoBehaviour
 		RebuildOverviewMesh(grid);
 		RebuildTexture(grid);
 		overviewMaterial.SetTexture("_MainTex", overviewTexture);
+		overviewMaterial.SetTexture("_ReliefTex", overviewReliefTexture);
 		RebuildPoliticalBorders(grid);
 	}
 
@@ -90,7 +61,7 @@ public sealed class HexMapOverview : MonoBehaviour
 		}
 		if (borderObject)
 		{
-			bool showBorders = visible && hasPoliticalBorders;
+			bool showBorders = visible && hasMapBorders;
 			if (borderObject.activeSelf != showBorders)
 			{
 				borderObject.SetActive(showBorders);
@@ -225,13 +196,30 @@ public sealed class HexMapOverview : MonoBehaviour
 				hideFlags = HideFlags.HideAndDontSave
 			};
 		}
+		if (!overviewReliefTexture || overviewReliefTexture.width != width ||
+			overviewReliefTexture.height != height)
+		{
+			DestroyRuntimeObject(overviewReliefTexture);
+			overviewReliefTexture = new Texture2D(
+				width, height, TextureFormat.RGBA32, false, true)
+			{
+				name = "World Strategic Relief Texture",
+				filterMode = FilterMode.Bilinear,
+				anisoLevel = 0,
+				hideFlags = HideFlags.HideAndDontSave
+			};
+		}
 		overviewTexture.wrapModeU = grid.Wrapping ?
 			TextureWrapMode.Repeat : TextureWrapMode.Clamp;
 		overviewTexture.wrapModeV = TextureWrapMode.Clamp;
+		overviewReliefTexture.wrapModeU = grid.Wrapping ?
+			TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+		overviewReliefTexture.wrapModeV = TextureWrapMode.Clamp;
 
 		GetMapBounds(grid, out float xMin, out float xMax,
 			out float zMin, out float zMax);
 		Color32[] pixels = new Color32[width * height];
+		Color32[] reliefPixels = new Color32[width * height];
 		for (int y = 0, pixel = 0; y < height; y++)
 		{
 			float z = Mathf.Lerp(zMin, zMax, (y + 0.5f) / height);
@@ -242,17 +230,21 @@ public sealed class HexMapOverview : MonoBehaviour
 					new Vector3(worldX, 0f, z));
 				if (grid.TryGetCellIndex(coordinates, out int cellIndex))
 				{
-					pixels[pixel] = GetPoliticalTint(grid, cellIndex);
+					pixels[pixel] = GetPoliticalAtlasPixel(grid, cellIndex);
+					reliefPixels[pixel] = GetReliefAtlasPixel(grid, cellIndex);
 				}
 				else
 				{
-					pixels[pixel] = noPoliticalTint;
+					pixels[pixel] = oceanAtlasPixel;
+					reliefPixels[pixel] = Color.clear;
 				}
 			}
 		}
 
 		overviewTexture.SetPixels32(pixels);
 		overviewTexture.Apply(false, false);
+		overviewReliefTexture.SetPixels32(reliefPixels);
+		overviewReliefTexture.Apply(false, false);
 	}
 
 	static int GetRasterScale(HexGrid grid)
@@ -263,23 +255,41 @@ public sealed class HexMapOverview : MonoBehaviour
 			politicalRasterScale : 1;
 	}
 
-	static Color32 GetPoliticalTint(HexGrid grid, int cellIndex)
+	static Color32 GetPoliticalAtlasPixel(HexGrid grid, int cellIndex)
 	{
 		HexCellData cell = grid.CellData[cellIndex];
-		if (cell.IsUnderwater ||
-			!grid.TryGetCountryColor(cell.CountryId, out Color32 country))
+		if (cell.IsUnderwater)
 		{
-			return noPoliticalTint;
+			return oceanAtlasPixel;
+		}
+		if (!grid.TryGetCountryColor(cell.CountryId, out Color32 country))
+		{
+			return unownedLandAtlasPixel;
+		}
+		country.a = 255;
+		return country;
+	}
+
+	static Color32 GetReliefAtlasPixel(HexGrid grid, int cellIndex)
+	{
+		HexCellData cell = grid.CellData[cellIndex];
+		if (cell.IsUnderwater)
+		{
+			return new Color32(0, 0, 0, 0);
 		}
 
-		// Slightly mute source colors. The shader applies this only after it has
-		// evaluated the exact map surface from the live logical textures.
-		int average = (country.r + country.g + country.b) / 3;
-		return new Color32(
-			(byte)((country.r * 4 + average) / 5),
-			(byte)((country.g * 4 + average) / 5),
-			(byte)((country.b * 4 + average) / 5),
-			255);
+		float landformHeight = cell.landform switch
+		{
+			HexLandform.Mountain => 0.94f,
+			HexLandform.Hill => 0.56f,
+			_ => 0.18f
+		};
+		landformHeight += Mathf.Clamp(cell.Elevation, 0, 8) * 0.012f;
+		byte height = (byte)Mathf.RoundToInt(
+			Mathf.Clamp01(landformHeight) * 255f);
+		byte vegetation = (byte)Mathf.RoundToInt(
+			Mathf.Clamp01(cell.VegetationDensity / 100f) * 255f);
+		return new Color32(height, vegetation, 0, 255);
 	}
 
 	void RebuildOverviewMesh(HexGrid grid)
@@ -323,79 +333,55 @@ public sealed class HexMapOverview : MonoBehaviour
 
 	void RebuildPoliticalBorders(HexGrid grid)
 	{
-		if (!grid.HasPoliticalData)
-		{
-			hasPoliticalBorders = false;
-			politicalBorderSegmentCount = 0;
-			if (borderMesh)
-			{
-				borderMesh.Clear();
-			}
-			if (borderObject)
-			{
-				borderObject.SetActive(false);
-			}
-			return;
-		}
-
 		EnsureBorderRenderer();
 		if (!borderMesh || !borderMaterial)
 		{
 			return;
 		}
 
-		Dictionary<int, List<BorderEdge>> groups = new();
-		int sourceSegmentCount = 0;
+		List<Vector3> segments = new();
+		int politicalSegments = 0;
 		for (int cellIndex = 0; cellIndex < grid.CellData.Length; cellIndex++)
 		{
 			HexCellData cell = grid.CellData[cellIndex];
-			if (cell.IsUnderwater || cell.CountryId == 0)
+			if (cell.IsUnderwater)
 			{
 				continue;
 			}
 			for (HexDirection direction = HexDirection.NE;
 				direction <= HexDirection.NW; direction++)
 			{
-				if (!grid.TryGetCellIndex(
-					cell.coordinates.Step(direction), out int neighborIndex) ||
-					neighborIndex <= cellIndex)
+				bool hasNeighbor = grid.TryGetCellIndex(
+					cell.coordinates.Step(direction), out int neighborIndex);
+				bool coastline = !hasNeighbor ||
+					grid.CellData[neighborIndex].IsUnderwater;
+				bool politicalBorder = false;
+				if (hasNeighbor && !coastline && neighborIndex > cellIndex)
 				{
-					continue;
+					ushort neighborCountry =
+						grid.CellData[neighborIndex].CountryId;
+					politicalBorder = cell.CountryId != 0 &&
+						neighborCountry != 0 &&
+						neighborCountry != cell.CountryId;
 				}
-				HexCellData neighbor = grid.CellData[neighborIndex];
-				if (neighbor.IsUnderwater || neighbor.CountryId == 0 ||
-					neighbor.CountryId == cell.CountryId)
+				if (!coastline && !politicalBorder)
 				{
 					continue;
 				}
 
-				ushort lowId = cell.CountryId < neighbor.CountryId ?
-					cell.CountryId : neighbor.CountryId;
-				ushort highId = cell.CountryId < neighbor.CountryId ?
-					neighbor.CountryId : cell.CountryId;
-				int groupKey = (lowId << 16) | highId;
-				if (!groups.TryGetValue(groupKey, out List<BorderEdge> edges))
-				{
-					edges = new List<BorderEdge>();
-					groups.Add(groupKey, edges);
-				}
 				Vector3 center = grid.CellPositions[cellIndex];
-				edges.Add(new BorderEdge(
-					center + HexMetrics.GetFirstCorner(direction),
-					center + HexMetrics.GetSecondCorner(direction)));
-				sourceSegmentCount += 1;
+				segments.Add(center + HexMetrics.GetFirstCorner(direction));
+				segments.Add(center + HexMetrics.GetSecondCorner(direction));
+				if (politicalBorder)
+				{
+					politicalSegments += 1;
+				}
 			}
 		}
 
-		List<Vector3> segments = new(sourceSegmentCount * 4);
-		foreach (List<BorderEdge> edges in groups.Values)
-		{
-			AppendSmoothedBorderSegments(edges, segments);
-		}
-
-		hasPoliticalBorders = sourceSegmentCount > 0;
-		politicalBorderSegmentCount = sourceSegmentCount;
-		if (!hasPoliticalBorders)
+		hasMapBorders = segments.Count > 0;
+		politicalBorderSegmentCount = politicalSegments;
+		if (!hasMapBorders)
 		{
 			borderMesh.Clear();
 			borderObject.SetActive(false);
@@ -455,135 +441,6 @@ public sealed class HexMapOverview : MonoBehaviour
 		borderObject.SetActive(IsVisible);
 	}
 
-	static void AppendSmoothedBorderSegments(
-		List<BorderEdge> edges, List<Vector3> outputSegments)
-	{
-		Dictionary<BorderPointKey, List<int>> adjacency = new();
-		for (int i = 0; i < edges.Count; i++)
-		{
-			AddIncidentEdge(new BorderPointKey(edges[i].a), i);
-			AddIncidentEdge(new BorderPointKey(edges[i].b), i);
-		}
-
-		bool[] visited = new bool[edges.Count];
-		for (int i = 0; i < edges.Count; i++)
-		{
-			BorderPointKey a = new(edges[i].a);
-			BorderPointKey b = new(edges[i].b);
-			if (adjacency[a].Count != 2 || adjacency[b].Count != 2)
-			{
-				BorderPointKey start = adjacency[a].Count != 2 ? a : b;
-				TraceAndSmooth(i, start);
-			}
-		}
-		for (int i = 0; i < edges.Count; i++)
-		{
-			if (!visited[i])
-			{
-				TraceAndSmooth(i, new BorderPointKey(edges[i].a));
-			}
-		}
-
-		void AddIncidentEdge(BorderPointKey point, int edgeIndex)
-		{
-			if (!adjacency.TryGetValue(point, out List<int> incidents))
-			{
-				incidents = new List<int>(2);
-				adjacency.Add(point, incidents);
-			}
-			incidents.Add(edgeIndex);
-		}
-
-		void TraceAndSmooth(int firstEdge, BorderPointKey start)
-		{
-			if (visited[firstEdge])
-			{
-				return;
-			}
-			List<Vector3> path = new();
-			BorderPointKey current = start;
-			path.Add(GetPoint(edges[firstEdge], current));
-			while (true)
-			{
-				int nextEdge = -1;
-				List<int> incidents = adjacency[current];
-				for (int i = 0; i < incidents.Count; i++)
-				{
-					if (!visited[incidents[i]])
-					{
-						nextEdge = incidents[i];
-						break;
-					}
-				}
-				if (nextEdge < 0)
-				{
-					break;
-				}
-				visited[nextEdge] = true;
-				BorderEdge edge = edges[nextEdge];
-				BorderPointKey a = new(edge.a);
-				BorderPointKey next = a.Equals(current) ?
-					new BorderPointKey(edge.b) : a;
-				path.Add(GetPoint(edge, next));
-				current = next;
-				if (current.Equals(start))
-				{
-					break;
-				}
-			}
-
-			bool closed = path.Count > 2 && current.Equals(start);
-			AppendChaikinPath(path, closed, outputSegments);
-		}
-	}
-
-	static Vector3 GetPoint(BorderEdge edge, BorderPointKey key) =>
-		new BorderPointKey(edge.a).Equals(key) ? edge.a : edge.b;
-
-	static void AppendChaikinPath(
-		List<Vector3> path, bool closed, List<Vector3> outputSegments)
-	{
-		if (path.Count < 2)
-		{
-			return;
-		}
-		if (path.Count == 2)
-		{
-			outputSegments.Add(path[0]);
-			outputSegments.Add(path[1]);
-			return;
-		}
-
-		int uniqueCount = closed ? path.Count - 1 : path.Count;
-		List<Vector3> smooth = new(uniqueCount * 2 + 2);
-		if (!closed)
-		{
-			smooth.Add(path[0]);
-		}
-		int segmentCount = closed ? uniqueCount : uniqueCount - 1;
-		for (int i = 0; i < segmentCount; i++)
-		{
-			Vector3 a = path[i];
-			Vector3 b = path[(i + 1) % uniqueCount];
-			smooth.Add(Vector3.Lerp(a, b, 0.25f));
-			smooth.Add(Vector3.Lerp(a, b, 0.75f));
-		}
-		if (closed)
-		{
-			smooth.Add(smooth[0]);
-		}
-		else
-		{
-			smooth.Add(path[path.Count - 1]);
-		}
-
-		for (int i = 0; i < smooth.Count - 1; i++)
-		{
-			outputSegments.Add(smooth[i]);
-			outputSegments.Add(smooth[i + 1]);
-		}
-	}
-
 	static void GetMapBounds(
 		HexGrid grid, out float xMin, out float xMax,
 		out float zMin, out float zMax)
@@ -602,6 +459,7 @@ public sealed class HexMapOverview : MonoBehaviour
 		DestroyRuntimeObject(overviewMaterial);
 		DestroyRuntimeObject(borderMaterial);
 		DestroyRuntimeObject(overviewTexture);
+		DestroyRuntimeObject(overviewReliefTexture);
 		DestroyRuntimeObject(overviewMesh);
 		DestroyRuntimeObject(borderMesh);
 	}

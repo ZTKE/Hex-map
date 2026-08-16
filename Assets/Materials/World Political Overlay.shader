@@ -2,8 +2,8 @@ Shader "Hex Map/World Political Border"
 {
 	Properties
 	{
-		_CoreColor ("Border core", Color) = (0.025, 0.03, 0.035, 0.96)
-		_HaloColor ("Border halo", Color) = (0.08, 0.07, 0.055, 0.36)
+		_CoreColor ("Border core", Color) = (0.28, 0.22, 0.18, 0.78)
+		_HaloColor ("Border halo", Color) = (0.78, 0.70, 0.58, 0.26)
 	}
 
 	SubShader
@@ -57,8 +57,8 @@ Shader "Hex Map/World Political Border"
 			half4 Frag(Varyings input) : SV_Target
 			{
 				half distanceFromCore = abs(input.uv.x * 2.0h - 1.0h);
-				half outer = 1.0h - smoothstep(0.62h, 1.0h, distanceFromCore);
-				half core = 1.0h - smoothstep(0.14h, 0.58h, distanceFromCore);
+				half outer = 1.0h - smoothstep(0.48h, 1.0h, distanceFromCore);
+				half core = 1.0h - smoothstep(0.10h, 0.52h, distanceFromCore);
 				half4 color = lerp(_HaloColor, _CoreColor, core);
 				color.a *= outer;
 				return color;
