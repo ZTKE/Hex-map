@@ -13,3 +13,6 @@ ApiUpdaterCheck.txt
 *.dwlt
 
 UserSettings/
+
+# Local migration backups, screenshots, and validation output.
+/Artifacts/

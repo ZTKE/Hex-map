@@ -1,0 +1,323 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b8f7a095a9c4a1fb083b0a9a6e55401, type: 3}
+  m_Name: Default Hex Terrain Style
+  m_EditorClassIdentifier: 
+  surfaceMode: 1
+  nearTerrainProfile: {fileID: 11400000, guid: f60c7b18ff2e1de46ae589c1563c93d8, type: 2}
+  hfColliderSubdivisions: 4
+  hfOverlaySubdivisionLevels: 2
+  hfRoadSurfaceOffset: 0.08
+  hfRiverSurfaceOffset: 0.12
+  hillHeight: 2.9
+  mountainHeight: 5.45
+  mountainWidth: 0.93
+  desertMountainHeight: 4.45
+  desertMountainWidth: 1.08
+  terrainSurfaceAtlas: {fileID: 2800000, guid: 654b92dcd6b248cfa7b804bfb4bf5020, type: 3}
+  terrainSurfaceBlend: 0
+  terrainSurfaceTiling: 0.018
+  terrainMacroVariation: 0.075
+  rockAlbedo: {fileID: 2800000, guid: d60b6b2c8e154a88a789e47948756d38, type: 3}
+  strataAlbedo: {fileID: 2800000, guid: aa90ef8b47f7443a9c407cb3ac3a209e, type: 3}
+  rockNormal: {fileID: 2800000, guid: e193dd071f754d8b88121f65c2b54c99, type: 3}
+  mountainColorDecal: {fileID: 0}
+  hfTerrainMixer: {fileID: 2800000, guid: 48b6be89a0124ac49bfff8bd154a081a, type: 3}
+  hfRiverMixer: {fileID: 2800000, guid: 9d6226c50f864343ab825699de5842ab, type: 3}
+  hfStampScale: 1
+  hfTerrainBlend: 1
+  hfReliefFootprint: 0.68
+  hfRiverMixerStrength: 0.82
+  hfOriginalTerrainBlend: 1
+  hfOriginalStampScale: 1.6
+  hfOriginalHeightScale: 16
+  hfOriginalHeightLod: 2
+  hfRiverCarve: {x: 0.07, y: 0.31}
+  hfDirtDiffuse: {fileID: 2800000, guid: 137cb0679adafb344a419db9246b6a1a, type: 3}
+  hfDirtHeight: {fileID: 2800000, guid: e906119e70c4f61409d0ef08b1be048b, type: 3}
+  hfDirtMixer: {fileID: 2800000, guid: 5355ced6bddd47f4ab466b6ad891c4ae, type: 3}
+  hfPlainsDiffuse: {fileID: 2800000, guid: e2a873a5e4190bf418dbb1416d23c92f, type: 3}
+  hfCommonHeight: {fileID: 2800000, guid: 7e2d0523013679942a113b83cee06f1f, type: 3}
+  hfPlainsMixer: {fileID: 2800000, guid: b8f981c693af13143973ecb227b51b43, type: 3}
+  hfMarshDiffuse: {fileID: 2800000, guid: a667046128148f242ba0bd775886658c, type: 3}
+  hfMarshMixer: {fileID: 2800000, guid: ac6d98f228520b340b9982c39a9ca43c, type: 3}
+  hfHillDiffuse: {fileID: 2800000, guid: 9ac4b14bd7305f04e8c012060d91606b, type: 3}
+  hfHillHeight: {fileID: 2800000, guid: ea70f7011c809d64e86fe0222dfe1b43, type: 3}
+  hfHillMixer: {fileID: 2800000, guid: f0faf7b00dbd428478cf0e3e508cfa83, type: 3}
+  hfMountainDiffuse: {fileID: 2800000, guid: 805c124fdc6751540b420b657d76594a, type: 3}
+  hfMountainHeight: {fileID: 2800000, guid: f177cf61067771c4a97118a8b9361b49, type: 3}
+  hfMountainMixer: {fileID: 2800000, guid: adf2eadad4047cd47b6eeda1e2887845, type: 3}
+  hfSeaDiffuse: {fileID: 2800000, guid: bbb22a6643171964c93131f9fa2aa4e9, type: 3}
+  hfSeaHeight: {fileID: 2800000, guid: c4a617a43e8acc045b5a9de58738f5bc, type: 3}
+  hfSeaMixer: {fileID: 2800000, guid: 30a5f54bbaf06df45a72e9272e877493, type: 3}
+  hfRiverDiffuse: {fileID: 2800000, guid: aaacdd3620cc3e64a901b5f13346ac79, type: 3}
+  hfRiverHeight: {fileID: 2800000, guid: 039eaf037701f50428fc9bc7c2086fb9, type: 3}
+  hfRiverOriginalMixer: {fileID: 2800000, guid: a7555eb0448a2d344ab4899821462d9e, type: 3}
+  snowLowHeight: 0.75
+  snowHighHeight: 0.8125
+  desertStripeCenters: {x: 0.417, y: 0.75, z: 0.833, w: 0.958}
+  desertStripeWidths: {x: 0.052, y: 0.032, z: 0.024, w: 0.017}
+  deepOcean: {r: 0.018, g: 0.1, b: 0.2, a: 1}
+  shallowWater: {r: 0.06, g: 0.36, b: 0.44, a: 1}
+  shoreFoam: {r: 0.9, g: 0.96, b: 0.94, a: 1}
+  wetSand: {r: 0.45, g: 0.34, b: 0.2, a: 1}
+  drySand: {r: 0.78, g: 0.63, b: 0.36, a: 1}
+  riverWater: {r: 0.035, g: 0.25, b: 0.29, a: 1}
+  riverBank: {r: 0.43, g: 0.32, b: 0.18, a: 1}
+  riverFlowSpeed: 0.72
+  riverWaveFrequency: 2.4
+  riverWaveStrength: 0.32
+  riverSmoothness: 0.82
+  riverMouthLength: 0.95
+  riverMouthWidth: 0.28
+  riverMouthTint: 0.72
+  riverMouthFoam: 0.42
+  waterStyleBlend: 0.84
+  coastCliffLow: {r: 0.32, g: 0.24, b: 0.16, a: 1}
+  coastCliffHigh: {r: 0.67, g: 0.58, b: 0.43, a: 1}
+  snowCoastCliff: {r: 0.72, g: 0.76, b: 0.75, a: 1}
+  coastCliffStrata: 0.68
+  plantTints:
+  - {r: 0.62, g: 0.55, b: 0.28, a: 1}
+  - {r: 0.24, g: 0.7, b: 0.19, a: 1}
+  - {r: 0.58, g: 0.64, b: 0.2, a: 1}
+  - {r: 0.42, g: 0.46, b: 0.29, a: 1}
+  - {r: 0.31, g: 0.46, b: 0.38, a: 1}
+  vegetationStyleBlend: 0
+  foregroundProfiles:
+  - displayName: Natural Mix
+    entries:
+    - sprite: 0
+      denseCount: 15
+      baseTint: {r: 0.44313726, g: 0.4745098, b: 0.18431373, a: 1}
+    - sprite: 2
+      denseCount: 30
+      baseTint: {r: 0.44313726, g: 0.4745098, b: 0.18431373, a: 1}
+    - sprite: 4
+      denseCount: 40
+      baseTint: {r: 0.39607844, g: 0.47058824, b: 0.20784314, a: 1}
+  - displayName: Broadleaf
+    entries:
+    - sprite: 0
+      denseCount: 68
+      baseTint: {r: 0.4627451, g: 0.5137255, b: 0.21176471, a: 1}
+  - displayName: Sapling
+    entries:
+    - sprite: 2
+      denseCount: 82
+      baseTint: {r: 0.4745098, g: 0.5254902, b: 0.21960784, a: 1}
+  - displayName: Conifer
+    entries:
+    - sprite: 4
+      denseCount: 72
+      baseTint: {r: 0.30980393, g: 0.4392157, b: 0.21960784, a: 1}
+  - displayName: Deadwood
+    entries:
+    - sprite: 3
+      denseCount: 38
+      baseTint: {r: 0.47058824, g: 0.41960785, b: 0.3019608, a: 1}
+    - sprite: 1
+      denseCount: 34
+      baseTint: {r: 0.42745098, g: 0.38431373, b: 0.28627452, a: 1}
+  - displayName: Cold Mix
+    entries:
+    - sprite: 4
+      denseCount: 34
+      baseTint: {r: 0.23921569, g: 0.36078432, b: 0.24313726, a: 1}
+    - sprite: 3
+      denseCount: 36
+      baseTint: {r: 0.40784314, g: 0.4392157, b: 0.3529412, a: 1}
+  shaderStyleStrength: 0
+  shaderSaturation: 1.08
+  shaderContrast: 1.02
+  shaderPosterization: 0.13
+  shaderBrushStrength: 0.055
+  shaderBrushScale: 0.055
+  shaderWarmLightTint: {r: 1.07, g: 1.01, b: 0.9, a: 1}
+  shaderCoolShadowTint: {r: 0.76, g: 0.83, b: 0.92, a: 1}
+  biomeStyles:
+  - name: Desert
+    scree: {r: 0.55, g: 0.38, b: 0.19, a: 1}
+    lowRock: {r: 0.43, g: 0.27, b: 0.14, a: 1}
+    highRock: {r: 0.64, g: 0.46, b: 0.27, a: 1}
+    stripe: {r: 0.64, g: 0.44, b: 0.23, a: 1}
+    snow: {r: 0.9, g: 0.92, b: 0.91, a: 1}
+    hillHighLine: 0.66
+    snowLine: 2
+  - name: Grass
+    scree: {r: 0.36, g: 0.35, b: 0.24, a: 1}
+    lowRock: {r: 0.27, g: 0.28, b: 0.23, a: 1}
+    highRock: {r: 0.49, g: 0.48, b: 0.39, a: 1}
+    stripe: {r: 0.56, g: 0.53, b: 0.4, a: 1}
+    snow: {r: 0.84, g: 0.87, b: 0.87, a: 1}
+    hillHighLine: 0.72
+    snowLine: 0.88
+  - name: Plains
+    scree: {r: 0.42, g: 0.41, b: 0.36, a: 1}
+    lowRock: {r: 0.31, g: 0.32, b: 0.31, a: 1}
+    highRock: {r: 0.57, g: 0.57, b: 0.54, a: 1}
+    stripe: {r: 0.63, g: 0.62, b: 0.56, a: 1}
+    snow: {r: 0.86, g: 0.88, b: 0.87, a: 1}
+    hillHighLine: 0.64
+    snowLine: 0.86
+  - name: Tundra
+    scree: {r: 0.44, g: 0.31, b: 0.21, a: 1}
+    lowRock: {r: 0.33, g: 0.25, b: 0.2, a: 1}
+    highRock: {r: 0.58, g: 0.43, b: 0.31, a: 1}
+    stripe: {r: 0.65, g: 0.49, b: 0.34, a: 1}
+    snow: {r: 0.87, g: 0.89, b: 0.89, a: 1}
+    hillHighLine: 0.69
+    snowLine: 0.83
+  - name: Snow
+    scree: {r: 0.51, g: 0.54, b: 0.54, a: 1}
+    lowRock: {r: 0.37, g: 0.41, b: 0.42, a: 1}
+    highRock: {r: 0.68, g: 0.7, b: 0.69, a: 1}
+    stripe: {r: 0.72, g: 0.73, b: 0.7, a: 1}
+    snow: {r: 0.91, g: 0.93, b: 0.94, a: 1}
+    hillHighLine: 0.38
+    snowLine: 0.68
+  mountainModules:
+  - name: End / Single
+    authoredMesh: {fileID: 0}
+    heightMask: {fileID: 0}
+    heightMaskBlend: 1
+    footprintScale: {x: 1, y: 1}
+    heightScale: 1
+    peaks:
+    - center: {x: 0.02, y: -0.08}
+      size: {x: 0.7, y: 0.62}
+      height: 0.94
+      sharpness: 1.18
+    - center: {x: -0.35, y: 0.15}
+      size: {x: 0.52, y: 0.46}
+      height: 0.79
+      sharpness: 1.18
+    - center: {x: 0.37, y: 0.18}
+      size: {x: 0.48, y: 0.43}
+      height: 0.71
+      sharpness: 1.18
+    - center: {x: 0.17, y: -0.38}
+      size: {x: 0.42, y: 0.38}
+      height: 0.59
+      sharpness: 1.18
+    - center: {x: 0, y: 0}
+      size: {x: 0.92, y: 0.36}
+      height: 0.48
+      sharpness: 0.92
+  - name: Bend
+    authoredMesh: {fileID: 0}
+    heightMask: {fileID: 0}
+    heightMaskBlend: 1
+    footprintScale: {x: 1, y: 1}
+    heightScale: 1
+    peaks:
+    - center: {x: -0.33, y: -0.1}
+      size: {x: 0.54, y: 0.49}
+      height: 0.81
+      sharpness: 1.18
+    - center: {x: 0.03, y: 0.05}
+      size: {x: 0.62, y: 0.57}
+      height: 0.97
+      sharpness: 1.18
+    - center: {x: 0.35, y: 0.28}
+      size: {x: 0.5, y: 0.45}
+      height: 0.77
+      sharpness: 1.18
+    - center: {x: 0.28, y: -0.28}
+      size: {x: 0.4, y: 0.36}
+      height: 0.57
+      sharpness: 1.18
+    - center: {x: 0, y: 0}
+      size: {x: 0.92, y: 0.36}
+      height: 0.48
+      sharpness: 0.92
+  - name: Through Ridge
+    authoredMesh: {fileID: 0}
+    heightMask: {fileID: 0}
+    heightMaskBlend: 1
+    footprintScale: {x: 1, y: 1}
+    heightScale: 1
+    peaks:
+    - center: {x: -0.48, y: 0.03}
+      size: {x: 0.5, y: 0.48}
+      height: 0.73
+      sharpness: 1.18
+    - center: {x: -0.13, y: -0.04}
+      size: {x: 0.55, y: 0.55}
+      height: 0.94
+      sharpness: 1.18
+    - center: {x: 0.25, y: 0.035}
+      size: {x: 0.52, y: 0.49}
+      height: 0.86
+      sharpness: 1.18
+    - center: {x: 0.53, y: -0.02}
+      size: {x: 0.43, y: 0.41}
+      height: 0.66
+      sharpness: 1.18
+    - center: {x: 0, y: 0}
+      size: {x: 0.98, y: 0.33}
+      height: 0.5
+      sharpness: 0.95
+  - name: Junction
+    authoredMesh: {fileID: 0}
+    heightMask: {fileID: 0}
+    heightMaskBlend: 1
+    footprintScale: {x: 1, y: 1}
+    heightScale: 1
+    peaks:
+    - center: {x: -0.2, y: -0.2}
+      size: {x: 0.58, y: 0.51}
+      height: 0.93
+      sharpness: 1.18
+    - center: {x: 0.29, y: -0.07}
+      size: {x: 0.52, y: 0.48}
+      height: 0.86
+      sharpness: 1.18
+    - center: {x: 0, y: 0.32}
+      size: {x: 0.5, y: 0.46}
+      height: 0.78
+      sharpness: 1.18
+    - center: {x: -0.42, y: 0.19}
+      size: {x: 0.38, y: 0.35}
+      height: 0.59
+      sharpness: 1.18
+    - center: {x: 0, y: 0}
+      size: {x: 0.92, y: 0.39}
+      height: 0.48
+      sharpness: 0.92
+  - name: Massif
+    authoredMesh: {fileID: 0}
+    heightMask: {fileID: 0}
+    heightMaskBlend: 1
+    footprintScale: {x: 1, y: 1}
+    heightScale: 1
+    peaks:
+    - center: {x: -0.23, y: 0.02}
+      size: {x: 0.62, y: 0.56}
+      height: 0.98
+      sharpness: 1.18
+    - center: {x: 0.28, y: -0.14}
+      size: {x: 0.55, y: 0.5}
+      height: 0.9
+      sharpness: 1.18
+    - center: {x: 0.14, y: 0.33}
+      size: {x: 0.49, y: 0.45}
+      height: 0.77
+      sharpness: 1.18
+    - center: {x: -0.4, y: -0.31}
+      size: {x: 0.43, y: 0.39}
+      height: 0.66
+      sharpness: 1.18
+    - center: {x: 0, y: 0}
+      size: {x: 0.96, y: 0.42}
+      height: 0.52
+      sharpness: 0.92

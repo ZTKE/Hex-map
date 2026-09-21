@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e582a2ef4736cd8458dce9bfea1833ac, type: 3}
+  m_Name: Civ6 Reference Near Terrain
+  m_EditorClassIdentifier: 
+  shapeAtlas: {fileID: 18700000, guid: 98081c6c75403944cb8a0de77be8ed5d, type: 2}
+  albedoAtlas: {fileID: 18700000, guid: 919c52b87b7f12744ad259f6b87e3cfc, type: 2}
+  landMaterials: {fileID: 11400000, guid: 13ab309ce2a5c1443bebc4b13d561ffd, type: 2}
+  vegetation: {fileID: 11400000, guid: 08a7974d0c7adda46bce68477ebba54a, type: 2}
+  mountainHeight: 7.5
+  hillHeight: 3.5
+  plateauHeight: 3.6
+  plateauRelief: 1.2
+  plateauWeathering: 0.65
+  plateauFootprint: 2.4
+  desertMountainHeight: 7.2
+  desertMountainFootprint: 1.55
+  mountainFootprint: 1.8
+  hillFootprint: 1.4
+  ridgeWidth: 0.6
+  ridgeStrength: 0.18
+  mountainRangeStrength: 1
+  mountainChainSaddle: 0.92
+  mountainMassifSaddle: 0.55
+  mountainChainWidth: 1
+  desertDuneHeight: 1.45
+  desertHillDuneHeight: 2.4
+  desertDuneWavelength: 1.25
+  desertDuneIrregularity: 0.65
+  desertDuneWindAngle: 18
+  mountainRangeWidth: 1.4
+  mountainRangeDirectionality: 0.9
+  mountainMassVariation: 0.8
+  mountainFootBlend: 0.55
+  mountainSlopeDetail: 0.28
+  mountainBaseHeight: 0.44
+  mountainBaseFootprint: 2.4
+  materialTiling: 0.065
+  materialDetail: 0.3
+  geometryDetail: 20
+  shallowWater: {r: 0.12, g: 0.4, b: 0.46, a: 1}
+  deepWater: {r: 0.018, g: 0.09, b: 0.17, a: 1}
+  provenance: 'Local Civilization VI Development Assets reference. Original SDK authorship
+    is retained; commercial reuse rights have not been established. Source hashes
+    and conversion details: Source Manifest.json. Shapes: R=authored HM.r, G=original
+    HBLEND alpha exported losslessly as grayscale, B=top mask (ID.a byte 128), A=snow
+    mask (ID.a byte 153). Layers 0-4=standard mountains, 5=hill, 6-9=desert mesas.
+    Desert has distinct stripe IDs, so top/snow masks are empty; its two surface
+    layers are authored desert base and Stripe01, not an invented separate top material.
+    Surface RGB=albedo, A=microheight; source-native static mesh transforms: (x,z,y),
+    reverse triangle winding, UV=(u,1-v).'

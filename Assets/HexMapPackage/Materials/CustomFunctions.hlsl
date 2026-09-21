@@ -1,0 +1,379 @@
+#include "HexCellData.hlsl"
+#include "Water.hlsl"
+
+#include "Hex Civilization Style.hlsl"
+
+float4 _HexDeepOceanColor;
+float4 _HexShallowWaterColor;
+float4 _HexShoreFoamColor;
+float4 _HexWetSandColor;
+float4 _HexDrySandColor;
+float4 _HexRiverWaterColor;
+float4 _HexRiverBankColor;
+float4 _HexRiverWaterMotion;
+// x: mouth length, y: final width, z: tint strength, w: foam strength.
+float _HexWaterStyleBlend;
+
+TEXTURE2D(_HexHFRiverMixer);
+SAMPLER(sampler_HexHFRiverMixer);
+// Shader Graph cannot legally reuse a named texture sampler for HF's other
+// texture objects. Use Unity's recognized inline state instead; every HF
+// lookup still shares this single linear-clamp sampler state.
+SAMPLER(sampler_linear_clamp);
+SAMPLER(sampler_point_clamp);
+#define HF_TERRAIN_LINEAR_SAMPLER sampler_linear_clamp
+#define HF_TERRAIN_POINT_SAMPLER sampler_point_clamp
+#include "HexTerrainShape.hlsl"
+float _HexHFRiverMixerStrength;
+
+float2 HexHFRiverUV(float2 riverUV)
+{
+	return float2(saturate(riverUV.x), frac(riverUV.y));
+}
+
+float HexHFRiverMask(float2 riverUV)
+{
+	float2 hfUV = HexHFRiverUV(riverUV);
+	float compactMask = SAMPLE_TEXTURE2D(
+		_HexHFRiverMixer, sampler_HexHFRiverMixer, hfUV).r;
+	float originalMask = SAMPLE_TEXTURE2D(
+		_HFRiverMixer, sampler_HFOriginal_linear_repeat, hfUV).r;
+	float mask = lerp(
+		compactMask, originalMask, saturate(_HexHFOriginalBlend));
+	return lerp(1.0, mask, saturate(_HexHFRiverMixerStrength));
+}
+
+float3 HexHFOriginalRiverDiffuse(float2 riverUV)
+{
+	return HFOriginalSampleRiverDiffuse(riverUV);
+}
+
+float3 HexStyledColor(float3 fallback, float3 styled)
+{
+	return lerp(fallback, styled, saturate(_HexWaterStyleBlend));
+}
+
+float3 HexShoreColor(
+	float shore,
+	float foam,
+	float waves,
+	float2 worldXZ,
+	float3 fallback)
+{
+	// Soft coast wash aligned with Global Ocean navy/teal — not neon cyan.
+	float waterDepth = smoothstep(0.02, 0.72, shore);
+	float3 mutedShallow = _HexShallowWaterColor.rgb * float3(0.70, 0.86, 0.88);
+	float3 ocean = lerp(_HexDeepOceanColor.rgb, mutedShallow, waterDepth * 0.75);
+	float beach = smoothstep(0.62, 0.86, shore);
+	float3 sand = lerp(
+		_HexWetSandColor.rgb, _HexDrySandColor.rgb,
+		smoothstep(0.72, 0.98, shore));
+	float3 styled = lerp(ocean, sand, beach);
+	float foamBand = foam * (1.0 - smoothstep(0.55, 0.80, shore));
+	foamBand *= foamBand;
+	styled += _HexShoreFoamColor.rgb * foamBand * 0.55;
+	styled += _HexShoreFoamColor.rgb * waves * (1.0 - beach) * 0.04;
+	return HexCivGrade(
+		lerp(fallback, styled, saturate(_HexWaterStyleBlend)),
+		float3(worldXZ.x, 0.0, worldXZ.y),
+		0.68 + waves * 0.14,
+		0.14);
+}
+
+// Used by Water and Water Shore shader graphs.
+void GetVertexCellData_float(
+	float3 Indices,
+	float3 Weights,
+	bool EditMode,
+	out float2 Visibility)
+{
+	float4 cell0 = GetCellData(Indices, 0, EditMode);
+	float4 cell1 = GetCellData(Indices, 1, EditMode);
+	float4 cell2 = GetCellData(Indices, 2, EditMode);
+	
+	Visibility = 0;
+	Visibility.x =
+		cell0.x * Weights.x + cell1.x * Weights.y + cell2.x * Weights.z;
+	Visibility.x = lerp(0.25, 1, Visibility.x);
+	Visibility.y =
+		cell0.y * Weights.x + cell1.y * Weights.y + cell2.y * Weights.z;
+}
+
+// Used by shader graphs that cross a cell edge: Estuary, River, and Road.
+void GetVertexCellDataEdge_float(
+	float3 Indices,
+	float2 Weights,
+	bool EditMode,
+	out float2 Visibility)
+{
+	float4 cell0 = GetCellData(Indices, 0, EditMode);
+	float4 cell1 = GetCellData(Indices, 1, EditMode);
+	
+	Visibility = 0;
+	Visibility.x = cell0.x * Weights.x + cell1.x * Weights.y;
+	Visibility.x = lerp(0.25, 1, Visibility.x);
+	Visibility.y = cell0.y * Weights.x + cell1.y * Weights.y;
+}
+
+void GetFragmentDataEstuary_float(
+	UnityTexture2D NoiseTexture,
+	float2 RiverUV,
+	float2 ShoreUV,
+	float3 WorldPosition,
+	float4 Color,
+	float2 Visibility,
+	float Time,
+	out float3 BaseColor,
+	out float Alpha,
+	out float Exploration)
+{
+	float shore = ShoreUV.y;
+	float foam = Foam(shore, WorldPosition.xz, Time, NoiseTexture);
+	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
+	waves *= 1 - shore;
+
+	float river = River(RiverUV, Time, NoiseTexture);
+
+	float3 coast = HexShoreColor(
+		shore, foam, waves, WorldPosition.xz, Color.rgb);
+	float hfRiverMask = HexHFRiverMask(RiverUV);
+	float hfBank = 1.0 - smoothstep(0.12, 0.82, hfRiverMask);
+	float3 hfRiverColor = lerp(
+		_HexRiverWaterColor.rgb, _HexRiverBankColor.rgb, hfBank * 0.72);
+	float3 riverColor = HexStyledColor(Color.rgb, hfRiverColor);
+	riverColor = lerp(
+		riverColor, HexHFOriginalRiverDiffuse(RiverUV),
+		saturate(_HexHFOriginalBlend));
+	float3 c = saturate(lerp(coast, riverColor + river * 0.16, ShoreUV.x));
+	BaseColor = c * Visibility.x;
+	Alpha = lerp(Color.a, lerp(0.7, 0.5, shore),
+		saturate(_HexWaterStyleBlend));
+	Exploration = Visibility.y;
+}
+
+void GetFragmentDataRoad_float(
+	UnityTexture2D NoiseTexture,
+	float2 BlendUV,
+	float3 WorldPosition,
+	float4 Color,
+	float2 Visibility,
+	out float3 BaseColor,
+	out float Alpha,
+	out float Exploration)
+{
+	float4 noise = NoiseTexture.Sample(
+		NoiseTexture.samplerstate, WorldPosition.xz * (3 * TILING_SCALE));
+	// Keep the road body readable. Noise belongs at the shoulder; applying the
+	// old 0.25..1 multiplier to the center turned long roads into dark blotches.
+	float3 roadColor = Color.rgb * (noise.y * 0.28 + 0.72);
+	BaseColor = HexCivGrade(
+		roadColor, WorldPosition, 0.58, 0.72) * Visibility.x;
+
+	// BlendUV.x is zero at the shoulder and one on the center line. Preserve a
+	// fully continuous core and use noise only to roughen the outer edge.
+	float coverage = saturate(BlendUV.x);
+	float edgeJitter = (noise.x - 0.5) * 0.18;
+	float shoulderAlpha = smoothstep(0.18, 0.56, coverage + edgeJitter);
+	float coreAlpha = smoothstep(0.48, 0.78, coverage);
+	Alpha = max(shoulderAlpha, coreAlpha);
+	Exploration = Visibility.y;
+}
+
+void GetFragmentDataRiver_float(
+	UnityTexture2D NoiseTexture,
+	float2 RiverUV,
+	float4 Color,
+	float2 Visibility,
+	float Time,
+	out float3 BaseColor,
+	out float Alpha,
+	out float Exploration)
+{
+	float river = River(RiverUV, Time, NoiseTexture);
+	float edgeSilt = smoothstep(0.66, 0.98, abs(RiverUV.x * 2.0 - 1.0));
+	float hfRiverMask = HexHFRiverMask(RiverUV);
+	float hfBank = 1.0 - smoothstep(0.12, 0.82, hfRiverMask);
+	float bankBlend = max(edgeSilt * 0.34, hfBank * 0.72);
+	float3 styled = lerp(
+		_HexRiverWaterColor.rgb, _HexRiverBankColor.rgb, bankBlend);
+	styled = lerp(
+		styled, HexHFOriginalRiverDiffuse(RiverUV),
+		saturate(_HexHFOriginalBlend));
+	float3 c = saturate(HexStyledColor(Color.rgb, styled) +
+		_HexShoreFoamColor.rgb * river * 0.12);
+	c = HexCivGrade(
+		c, float3(RiverUV.x * 19.0, 0.0, RiverUV.y * 19.0),
+		0.66 + river * 0.16, 0.46);
+	BaseColor = c * Visibility.x;
+	Alpha = lerp(Color.a, 0.68, saturate(_HexWaterStyleBlend));
+	// Reveal the terrain beneath the dark sides of HF's meandering mask. This
+	// makes the water channel bend inside the strip instead of reading as a
+	// uniformly colored straight ribbon.
+	Alpha *= smoothstep(0.08, 0.72, hfRiverMask);
+	Exploration = Visibility.y;
+}
+
+void GetFragmentDataWater_float(
+	UnityTexture2D NoiseTexture,
+	float3 WorldPosition,
+	float4 Color,
+	float2 Visibility,
+	float Time,
+	out float3 BaseColor,
+	out float Alpha,
+	out float Exploration)
+{
+	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
+	float shore = 0.0;
+	float shelf = 0.0;
+	float waterCoverage = 1.0;
+	float riverMouthMask = 0.0;
+	float riverMouthFoam = 0.0;
+	float2 riverMouthUV = 0.0;
+	float waterDepth = 4.0;
+	float seaInfluence = 1.0;
+	HexGridData grid = GetHexGridData(WorldPosition.xz);
+	if (_HexHFOriginalBlend > 0.999)
+	{
+		float2 hexPosition = WoldToHexSpace(WorldPosition.xz);
+		float2 local = hexPosition - grid.cellCenter;
+		float2 resolvedCellOffset;
+		HFResolveOffset(grid.cellOffsetCoordinates, resolvedCellOffset);
+		float cellIndex = resolvedCellOffset.y *
+			_HexCellData_TexelSize.z + resolvedCellOffset.x;
+		float2 reliefPoint = local * (1.5 / HF_MIXER_SQRT3_OVER_2);
+		HFReliefSurface coastSurface = HF_EvaluateOriginalRelief(
+			cellIndex, reliefPoint);
+		float signedWaterDepth =
+			WorldPosition.y - HFStabilizeOceanSurfaceY(coastSurface);
+		float coverageWidth = max(fwidth(signedWaterDepth) * 2.4, 0.04);
+		float heightCoverage = smoothstep(
+			-coverageWidth, coverageWidth, signedWaterDepth);
+		seaInfluence = saturate(coastSurface.seaInfluence);
+		float seaCoverage = smoothstep(0.02, 0.22, seaInfluence);
+		waterCoverage = heightCoverage * seaCoverage;
+		waterDepth = max(signedWaterDepth, 0.0);
+
+		float depthAA = max(fwidth(waterDepth) * 2.0, 0.06);
+		shore = 1.0 - smoothstep(0.01, 0.16 + depthAA, waterDepth);
+		float depthShelf = 1.0 - smoothstep(
+			0.05, 1.55 + depthAA, waterDepth);
+		float coastShelf = 1.0 - smoothstep(0.18, 0.72, seaInfluence);
+		shelf = saturate(depthShelf * 0.55 + coastShelf * 0.70);
+		shelf = smoothstep(0.08, 0.92, shelf);
+
+		float mouthLength = max(_HexRiverMouth.x, 0.05);
+		[branch]
+		if (coastSurface.riverDistance < mouthLength && waterCoverage > 0.001)
+		{
+			float underwaterRiverDistance;
+			HFWaterRiverCoordinates(
+				grid.cellOffsetCoordinates, reliefPoint,
+				underwaterRiverDistance, riverMouthUV);
+			float alongMouth = saturate(
+				coastSurface.riverDistance / mouthLength);
+			float mouthWidth = lerp(
+				_HexReliefRiverCarve.x + 0.055,
+				max(_HexRiverMouth.y, _HexReliefRiverCarve.x + 0.06),
+				smoothstep(0.0, 1.0, alongMouth));
+			float widthFeather = max(fwidth(underwaterRiverDistance) * 1.5, 0.025);
+			float channelMask = 1.0 - smoothstep(
+				mouthWidth, mouthWidth + widthFeather,
+				underwaterRiverDistance);
+			float lengthFade = 1.0 - smoothstep(0.34, 1.0, alongMouth);
+			float depthFade = 1.0 - smoothstep(0.42, 2.2, waterDepth);
+			riverMouthMask = channelMask * lengthFade * depthFade * waterCoverage;
+
+			float flowPhase =
+				riverMouthUV.y * max(_HexRiverWaterMotion.y, 0.25) *
+					(2.0 * HF_PI) -
+				Time * max(_HexRiverWaterMotion.x, 0.01) * (2.0 * HF_PI);
+			float flowCrest = 0.5 + 0.5 * sin(
+				flowPhase + riverMouthUV.x * 3.2);
+			float mouthEdge = smoothstep(
+				0.42, 0.92, underwaterRiverDistance / max(mouthWidth, 0.001));
+			riverMouthFoam =
+				(flowCrest * 0.38 + mouthEdge * 0.62) * riverMouthMask;
+		}
+	}
+	else
+	{
+		shelf = 0.20;
+	}
+
+	float basinTone;
+	float macroTone;
+	float fineTone;
+	float current;
+	NearOceanFlow(
+		NoiseTexture, WorldPosition.xz, Time,
+		basinTone, macroTone, fineTone, current);
+	float foam = Foam(shore, WorldPosition.xz, Time, NoiseTexture);
+	float glitter = OceanGlitter(WorldPosition.xz, Time, NoiseTexture);
+
+	float3 deep = lerp(
+		float3(0.012, 0.055, 0.110),
+		_HexDeepOceanColor.rgb,
+		saturate(_HexWaterStyleBlend) * 0.90);
+	float3 shallow = lerp(
+		float3(0.05, 0.30, 0.38),
+		_HexShallowWaterColor.rgb * float3(0.72, 0.88, 0.90),
+		saturate(_HexWaterStyleBlend) * 0.85);
+	float3 water = lerp(deep, shallow, shelf * 0.72);
+	float tone =
+		(basinTone - 0.5) * 0.18 +
+		(macroTone - 0.5) * 0.11 +
+		(fineTone - 0.5) * 0.06 +
+		(waves - 0.35) * 0.08;
+	water *= 1.0 + tone;
+	water = lerp(water, shallow * 0.90, current * 0.10);
+	water = lerp(water, shallow * 0.94, shore * 0.22);
+
+	float3 coast = HexShoreColor(
+		shore, foam, waves * (1.0 - shore) * 0.55, WorldPosition.xz, water);
+	float3 c = lerp(water, coast, saturate(shore * 0.55 + foam * 0.40));
+	c += glitter * (0.16 + waves * 0.12) *
+		lerp(float3(0.80, 0.92, 1.0), _HexShoreFoamColor.rgb, 0.20);
+	c += _HexShoreFoamColor.rgb * foam * shore * 0.12;
+
+	float mouthTint = saturate(_HexRiverMouth.z) * riverMouthMask;
+	float3 mouthWater = lerp(
+		_HexRiverWaterColor.rgb,
+		_HexShallowWaterColor.rgb, 0.22 + shore * 0.18);
+	c = lerp(c, mouthWater, mouthTint);
+	c += _HexShoreFoamColor.rgb *
+		riverMouthFoam * saturate(_HexRiverMouth.w) * 0.20;
+	c = HexCivGrade(c, WorldPosition, 0.72 + waves * 0.12, 0.12);
+	c = ApplyHFEditorOverlay(c, grid);
+
+	BaseColor = saturate(c) * Visibility.x;
+	float coastAlpha = lerp(0.86, 0.62, shelf);
+	coastAlpha = lerp(coastAlpha, 0.70, saturate(shore));
+	Alpha = lerp(
+		Color.a, coastAlpha, saturate(_HexWaterStyleBlend)) * waterCoverage;
+	Exploration = Visibility.y;
+}
+
+void GetFragmentDataShore_float(
+	UnityTexture2D NoiseTexture,
+	float2 ShoreUV,
+	float3 WorldPosition,
+	float4 Color,
+	float2 Visibility,
+	float Time,
+	out float3 BaseColor,
+	out float Alpha,
+	out float Exploration)
+{
+	float shore = ShoreUV.y;
+	float foam = Foam(shore, WorldPosition.xz, Time, NoiseTexture);
+	float waves = Waves(WorldPosition.xz, Time, NoiseTexture);
+	waves *= 1 - shore;
+	float3 c = saturate(HexShoreColor(
+		shore, foam, waves, WorldPosition.xz, Color.rgb));
+	
+	BaseColor = c * Visibility.x;
+	Alpha = lerp(Color.a, lerp(0.74, 0.38, smoothstep(0.2, 1.0, shore)),
+		saturate(_HexWaterStyleBlend));
+	Exploration = Visibility.y;
+}

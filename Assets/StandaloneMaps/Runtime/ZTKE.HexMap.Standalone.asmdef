@@ -1,0 +1,12 @@
+{
+  "name": "ZTKE.HexMap.Standalone",
+  "references": [
+    "ZTKE.HexMap.Runtime",
+    "WW2.SphericalTerrainPreview",
+    "Unity.ugui",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [],
+  "autoReferenced": true
+}

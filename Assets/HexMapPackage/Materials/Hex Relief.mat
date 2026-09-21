@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Hex Relief
+  m_Shader: {fileID: 4800000, guid: b87f1d0218ec45998666b396e3a9efcc, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _Civ6RiverBankAlbedo:
+        m_Texture: {fileID: 2800000, guid: cf19a86b9ff55823ab5ab6ad8c9e207d, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Civ6RiverDensity:
+        m_Texture: {fileID: 2800000, guid: 0e21509cb3fa51e8acfc6ca03a3e32b8, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Civ6RiverScatter:
+        m_Texture: {fileID: 2800000, guid: 51f156c0b9935c1c93590dbb3a110a67, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Civ6RiverWaveMoments:
+        m_Texture: {fileID: 2800000, guid: 3432d6333d4c58ecb8871d171ff2991a, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _HexMountainMasks:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _HexTerrainStyleAtlas:
+        m_Texture: {fileID: 2800000, guid: 654b92dcd6b248cfa7b804bfb4bf5020, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mountain_Color_Decal:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Relief_Rock:
+        m_Texture: {fileID: 2800000, guid: d60b6b2c8e154a88a789e47948756d38, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Relief_Rock_Normal:
+        m_Texture: {fileID: 2800000, guid: e193dd071f754d8b88121f65c2b54c99, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Relief_Strata:
+        m_Texture: {fileID: 2800000, guid: aa90ef8b47f7443a9c407cb3ac3a209e, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Terrain_Textures:
+        m_Texture: {fileID: 18700000, guid: 02fab4a96440e4eecaf595714d428940, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Civ6RiverBankTextureStrength: 0.32
+    - _Civ6RiverBumpStrength: 1.75
+    - _Civ6RiverDensityRange: 2
+    - _Civ6RiverDensityStrength: 1
+    - _Civ6RiverF0: 0.004
+    - _Civ6RiverOpticalDepth: 1.2
+    - _Civ6RiverScatterTint: 0.18
+    - _Civ6RiverScrollSpeed: 0.0375
+    - _Civ6RiverSkyStrength: 0.28
+    - _Civ6RiverSpecularExponent: 850
+    - _Civ6RiverSunStrength: 1.2
+    - _Civ6RiverWaterDarkening: 0.68
+    - _Civ6RiverWorldScale: 0.18
+    - _HexReliefCoastTessellation: 8
+    - _HexReliefStampScale: 1.22
+    - _HexReliefTessellation: 8
+    - _HexReliefTessellationEnd: 280
+    - _HexReliefTessellationStart: 80
+    - _Use_Mountain_Color_Decal: 0
+    m_Colors:
+    - _HexReliefRiverCarve: {r: 0.07, g: 0.31, b: 0, a: 0}
+  m_BuildTextureStacks: []

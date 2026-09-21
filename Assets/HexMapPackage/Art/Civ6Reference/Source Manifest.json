@@ -1,0 +1,2211 @@
+{
+  "pantry": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry",
+  "purpose": "Local reference and conversion validation; original Civilization VI SDK assets are not original game art",
+  "exporterSource": "https://github.com/deliverator23/CivNexus6",
+  "coordinateSystem": "OBJ and mesh.json preserve source-native Z-up inches; no transforms, units, material recreation or animation applied",
+  "models": [
+    {
+      "name": "Trees_Pine_01",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Pine_01.fgx",
+      "sourceSha256": "1e4eb269fe4ed0d12ad561bc93aa4cf0a4fa9a7e6370852de581f5e88185ec87",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_01.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_01.obj",
+      "boundsMin": [
+        -37.3470459,
+        -41.3808975,
+        2.052551
+      ],
+      "boundsMax": [
+        36.86548,
+        42.0168533,
+        113.647964
+      ],
+      "materials": [
+        "Trees_Pine"
+      ],
+      "validation": {
+        "vertexCount": 47,
+        "triangleCount": 39,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999660423997,
+        "normalLengthMax": 1.0000001032279835,
+        "uvMin": [
+          0.00677466951,
+          0.010058403
+        ],
+        "uvMax": [
+          0.9917514,
+          0.983576059
+        ],
+        "positiveFaceNormalDots": 39,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Pine_Snow_01.ast",
+          "group": "Trees_Pine",
+          "state": "Default",
+          "material": "Trees_Pine_Snow"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Pine_01.ast",
+          "group": "Trees_Pine",
+          "state": "Default",
+          "material": "Trees_Pine"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Pine_02",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Pine_02.fgx",
+      "sourceSha256": "720af80e7e756d147b1fa3cb8048b878f32f7e07436d06e70a66c03b8b8e97b6",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_02.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_02.obj",
+      "boundsMin": [
+        -36.1615,
+        -31.6023445,
+        6.041644
+      ],
+      "boundsMax": [
+        37.65149,
+        35.7754364,
+        127.791916
+      ],
+      "materials": [
+        "Trees_Pine"
+      ],
+      "validation": {
+        "vertexCount": 47,
+        "triangleCount": 39,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999590355908,
+        "normalLengthMax": 1.0000001062246995,
+        "uvMin": [
+          0.00698191673,
+          0.0186484456
+        ],
+        "uvMax": [
+          0.9952659,
+          0.991839349
+        ],
+        "positiveFaceNormalDots": 39,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Pine_Snow_02.ast",
+          "group": "Trees_Pine",
+          "state": "Default",
+          "material": "Trees_Pine_Snow"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Pine_02.ast",
+          "group": "Trees_Pine",
+          "state": "Default",
+          "material": "Trees_Pine"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Pine_03",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Pine_03.fgx",
+      "sourceSha256": "5915b0d4c5e3bbeebaa7db305227c5ded79e029d2bc1ce3d88e22b2f5f15684b",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_03.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_03.obj",
+      "boundsMin": [
+        -33.18457,
+        -32.47569,
+        6.16229534
+      ],
+      "boundsMax": [
+        33.8769531,
+        32.5629234,
+        114.249741
+      ],
+      "materials": [
+        "Trees_Pine"
+      ],
+      "validation": {
+        "vertexCount": 44,
+        "triangleCount": 48,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999647249224,
+        "normalLengthMax": 1.0000001328414931,
+        "uvMin": [
+          0.434295863,
+          0.4718268
+        ],
+        "uvMax": [
+          0.9952659,
+          0.991839349
+        ],
+        "positiveFaceNormalDots": 48,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Pine_03.ast",
+          "group": "Trees_Pine",
+          "state": "Default",
+          "material": "Trees_Pine"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Pine_Snow_03.ast",
+          "group": "Trees_Pine",
+          "state": "Default",
+          "material": "Trees_Pine_Snow"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Decid_01",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Decid_01.fgx",
+      "sourceSha256": "79966297006e9682afd41c84879e2b5df2592244b125878464a4efa1fb3e9cad",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Decid_01.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Decid_01.obj",
+      "boundsMin": [
+        -44.0189819,
+        -43.7101,
+        -5.532318
+      ],
+      "boundsMax": [
+        49.90741,
+        30.60799,
+        136.375656
+      ],
+      "materials": [
+        "20 - Default"
+      ],
+      "validation": {
+        "vertexCount": 177,
+        "triangleCount": 228,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999351126264,
+        "normalLengthMax": 1.0000001332839963,
+        "uvMin": [
+          0.0245610047,
+          0.00542378426
+        ],
+        "uvMax": [
+          0.995026231,
+          0.9969605
+        ],
+        "positiveFaceNormalDots": 228,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Decid_01.ast",
+          "group": "20 - Default",
+          "state": "Default",
+          "material": "Trees_Decid"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Decid_02",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Decid_02.fgx",
+      "sourceSha256": "9252b929a6d258da50211e5a0e05c8310720fcfb89e6289b40489bf375e27404",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Decid_02.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Decid_02.obj",
+      "boundsMin": [
+        -51.4317,
+        -46.51245,
+        -2.07308745
+      ],
+      "boundsMax": [
+        50.2727051,
+        45.5534668,
+        123.696213
+      ],
+      "materials": [
+        "20 - Default"
+      ],
+      "validation": {
+        "vertexCount": 144,
+        "triangleCount": 215,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999442271235,
+        "normalLengthMax": 1.0000001287187574,
+        "uvMin": [
+          0.008429002,
+          0.232221365
+        ],
+        "uvMax": [
+          0.9915027,
+          0.9962512
+        ],
+        "positiveFaceNormalDots": 215,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Decid_02.ast",
+          "group": "20 - Default",
+          "state": "Default",
+          "material": "Trees_Decid"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Decid_03",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Decid_03.fgx",
+      "sourceSha256": "e05974ba66739921733168d7b5ad71ec7044cc0d322dd708adc38d20e5b3ab9f",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Decid_03.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Decid_03.obj",
+      "boundsMin": [
+        -48.1470947,
+        -35.2400322,
+        -5.532318
+      ],
+      "boundsMax": [
+        42.4025879,
+        44.03485,
+        126.854591
+      ],
+      "materials": [
+        "20 - Default"
+      ],
+      "validation": {
+        "vertexCount": 273,
+        "triangleCount": 389,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999462889697,
+        "normalLengthMax": 1.000000122134158,
+        "uvMin": [
+          0.008429002,
+          0.0149248838
+        ],
+        "uvMax": [
+          0.995026231,
+          0.9969605
+        ],
+        "positiveFaceNormalDots": 389,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Tree_Decid_03.ast",
+          "group": "20 - Default",
+          "state": "Default",
+          "material": "Trees_Decid"
+        }
+      ]
+    },
+    {
+      "name": "Jungle_PalmA",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Jungle_PalmA.fgx",
+      "sourceSha256": "e4d8587292a7f14a63dcd19dc10a704346b62d25f850c5f09a0e77cd0e41ab42",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Jungle_PalmA.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Jungle_PalmA.obj",
+      "boundsMin": [
+        -27.7883053,
+        -22.75647,
+        -3.81429577
+      ],
+      "boundsMax": [
+        30.9611778,
+        25.2950134,
+        47.99331
+      ],
+      "materials": [
+        "Tree_Jungle_Base"
+      ],
+      "validation": {
+        "vertexCount": 143,
+        "triangleCount": 145,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999515434257,
+        "normalLengthMax": 1.0000001282002648,
+        "uvMin": [
+          2.49052228e-08,
+          0
+        ],
+        "uvMax": [
+          0.3482597,
+          0.9988741
+        ],
+        "positiveFaceNormalDots": 145,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmA.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Worked",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmA.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Unworked",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmA.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Pillaged",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmA.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Construction",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmA.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Unbuilt",
+          "material": "Tree_Jungle_Base"
+        }
+      ]
+    },
+    {
+      "name": "Jungle_PalmB",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Jungle_PalmB.fgx",
+      "sourceSha256": "6d5e01d5cc9bea2ca94dd26717ef53d47de67c9aa351734beca04c16836fabdb",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Jungle_PalmB.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Jungle_PalmB.obj",
+      "boundsMin": [
+        -26.4187927,
+        -27.7573547,
+        -3.347601
+      ],
+      "boundsMax": [
+        28.8957825,
+        30.03949,
+        48.45968
+      ],
+      "materials": [
+        "Tree_Jungle_Base"
+      ],
+      "validation": {
+        "vertexCount": 165,
+        "triangleCount": 169,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999566117391,
+        "normalLengthMax": 1.0000001282002648,
+        "uvMin": [
+          2.49052228e-08,
+          0
+        ],
+        "uvMax": [
+          0.3482597,
+          0.9988741
+        ],
+        "positiveFaceNormalDots": 169,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmB.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Worked",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmB.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Unworked",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmB.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Pillaged",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmB.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Construction",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmB.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Unbuilt",
+          "material": "Tree_Jungle_Base"
+        }
+      ]
+    },
+    {
+      "name": "Jungle_PalmC",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Jungle_PalmC.fgx",
+      "sourceSha256": "87807860492a3afcaa53cd3fb31926510ec4d14b3dc2f1aa37f96eb8db17d25b",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Jungle_PalmC.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Jungle_PalmC.obj",
+      "boundsMin": [
+        -29.69671,
+        -24.4837646,
+        -6.23306274
+      ],
+      "boundsMax": [
+        9.264687,
+        19.3853455,
+        53.15265
+      ],
+      "materials": [
+        "Tree_Jungle_Base"
+      ],
+      "validation": {
+        "vertexCount": 164,
+        "triangleCount": 181,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.99999995805449,
+        "normalLengthMax": 1.0000000938448657,
+        "uvMin": [
+          2.49052228e-08,
+          0
+        ],
+        "uvMax": [
+          0.984943867,
+          0.5039218
+        ],
+        "positiveFaceNormalDots": 181,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmC.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Worked",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmC.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Unworked",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmC.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Pillaged",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmC.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Construction",
+          "material": "Tree_Jungle_Base"
+        },
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Jungle_PalmC.ast",
+          "group": "Tree_Jungle_Base",
+          "state": "Unbuilt",
+          "material": "Tree_Jungle_Base"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Pine_Clump_01",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Pine_Clump_01.fgx",
+      "sourceSha256": "e30926ee6b544875de20a7c930e89c159aeb87f74c7009689804186ee0afa765",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_Clump_01.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_Clump_01.obj",
+      "boundsMin": [
+        -59.9984131,
+        -84.9492,
+        -10.1879511
+      ],
+      "boundsMax": [
+        68.83435,
+        32.0629463,
+        35.16839
+      ],
+      "materials": [
+        "Tree_Jungle_Base"
+      ],
+      "validation": {
+        "vertexCount": 390,
+        "triangleCount": 386,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999415704395,
+        "normalLengthMax": 1.0000000977943653,
+        "uvMin": [
+          0.279497445,
+          0.0033480525
+        ],
+        "uvMax": [
+          0.994184434,
+          0.9916882
+        ],
+        "positiveFaceNormalDots": 386,
+        "negativeFaceNormalDots": 0
+      }
+    },
+    {
+      "name": "Trees_Pine_Clump_02",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Pine_Clump_02.fgx",
+      "sourceSha256": "97bb78a604e341b79cc67347c1745482e505442b5db86345ed62dcae06706289",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_Clump_02.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Pine_Clump_02.obj",
+      "boundsMin": [
+        -66.67407,
+        -72.13987,
+        -10.1879492
+      ],
+      "boundsMax": [
+        58.0296631,
+        72.1398544,
+        35.1683846
+      ],
+      "materials": [
+        "Tree_Jungle_Base"
+      ],
+      "validation": {
+        "vertexCount": 412,
+        "triangleCount": 419,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999360490147,
+        "normalLengthMax": 1.0000001368859486,
+        "uvMin": [
+          0.279663,
+          -0.0003091097
+        ],
+        "uvMax": [
+          0.9933746,
+          0.9921541
+        ],
+        "positiveFaceNormalDots": 419,
+        "negativeFaceNormalDots": 0
+      }
+    },
+    {
+      "name": "Trees_Boulder_01",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Boulder_01.fgx",
+      "sourceSha256": "b87e9029d327821d61da58a1da45b9ef42a6a35fb45ed0d9acbf68f29cbe6885",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Boulder_01.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Boulder_01.obj",
+      "boundsMin": [
+        -9.90686,
+        -9.219559,
+        -8.562633
+      ],
+      "boundsMax": [
+        10.5782471,
+        9.976227,
+        9.998158
+      ],
+      "materials": [
+        "RES_Stone"
+      ],
+      "validation": {
+        "vertexCount": 40,
+        "triangleCount": 56,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999768491837,
+        "normalLengthMax": 1.0000000655294847,
+        "uvMin": [
+          0.05197983,
+          0.09446645
+        ],
+        "uvMax": [
+          1.21456158,
+          0.9867875
+        ],
+        "positiveFaceNormalDots": 56,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Boulder_01.ast",
+          "group": "RES_Stone",
+          "state": "Default",
+          "material": "RES_Stone"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Boulder_02",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Boulder_02.fgx",
+      "sourceSha256": "2ea870401d16367e5c83e59bd50b9629b0e51e3c8121c2e3ae1891b92f0e5ab5",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Boulder_02.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Boulder_02.obj",
+      "boundsMin": [
+        -11.7592773,
+        -9.882996,
+        -5.550356
+      ],
+      "boundsMax": [
+        6.973999,
+        9.295471,
+        7.85084152
+      ],
+      "materials": [
+        "RES_Stone"
+      ],
+      "validation": {
+        "vertexCount": 41,
+        "triangleCount": 56,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.999999957495978,
+        "normalLengthMax": 1.0000001051999774,
+        "uvMin": [
+          0.00184394012,
+          0.05832672
+        ],
+        "uvMax": [
+          1.18700206,
+          0.96383
+        ],
+        "positiveFaceNormalDots": 56,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Boulder_02.ast",
+          "group": "RES_Stone",
+          "state": "Default",
+          "material": "RES_Stone"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Shrub_01",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Shrub_01.fgx",
+      "sourceSha256": "fb7ff9ec50758f1b2341fd2bc0b322759071a09db8fcdf9e8d38d4e96a2c8c3e",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Shrub_01.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Shrub_01.obj",
+      "boundsMin": [
+        -17.9038162,
+        -12.8759594,
+        -4.48158
+      ],
+      "boundsMax": [
+        17.99987,
+        12.3811665,
+        19.9624233
+      ],
+      "materials": [
+        "20 - Default"
+      ],
+      "validation": {
+        "vertexCount": 120,
+        "triangleCount": 188,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999614124822,
+        "normalLengthMax": 1.000000046475846,
+        "uvMin": [
+          0.6677179,
+          0.3363176
+        ],
+        "uvMax": [
+          0.9886815,
+          0.658477247
+        ],
+        "positiveFaceNormalDots": 188,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Shrub_01.ast",
+          "group": "20 - Default",
+          "state": "Default",
+          "material": "Trees_Base"
+        }
+      ]
+    },
+    {
+      "name": "Trees_Shrub_02",
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Geometries\\Trees_Shrub_02.fgx",
+      "sourceSha256": "04b8b4d9f9743c3186afa0cc895503b94de48dd46d307a0c510fab9e93471af4",
+      "meshJson": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Shrub_02.mesh.json",
+      "obj": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Models\\Trees_Shrub_02.obj",
+      "boundsMin": [
+        -8.974882,
+        -8.290293,
+        -2.0654254
+      ],
+      "boundsMax": [
+        8.974825,
+        8.290289,
+        14.3498478
+      ],
+      "materials": [
+        "20 - Default"
+      ],
+      "validation": {
+        "vertexCount": 60,
+        "triangleCount": 94,
+        "geoCountsMatch": true,
+        "finiteAttributes": true,
+        "normalLengthMin": 0.9999999620393092,
+        "normalLengthMax": 1.0000000547105616,
+        "uvMin": [
+          0.008083808,
+          0.3404883
+        ],
+        "uvMax": [
+          0.322794884,
+          0.6563722
+        ],
+        "positiveFaceNormalDots": 94,
+        "negativeFaceNormalDots": 0
+      },
+      "assetMaterialOverrides": [
+        {
+          "asset": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Assets\\Shrub_02.ast",
+          "group": "20 - Default",
+          "state": "Default",
+          "material": "Trees_Base"
+        }
+      ]
+    }
+  ],
+  "materials": {
+    "20 - Default": {
+      "missing": true
+    },
+    "FEATURE_SingleMountain001": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountain001.mtl",
+      "sourceSha256": "a9401e336758f300e9cd25cd81ac24d57e99e2598c7041efc717fc94f63a7a65",
+      "textures": {
+        "Heightmap": "Mountain_Single_01_HM",
+        "IDMap": "Mountain_Single_01_ID",
+        "BlendMap": "Mountain_Single_01_HBLEND"
+      }
+    },
+    "FEATURE_SingleMountain002": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountain002.mtl",
+      "sourceSha256": "43da70d8185427cbe2eb967830da6e1927cccac8d45891a986199f8ad06024b1",
+      "textures": {
+        "Heightmap": "Mountain_Single_02_HM",
+        "IDMap": "Mountain_Single_02_ID",
+        "BlendMap": "Mountain_Single_02_HBLEND"
+      }
+    },
+    "FEATURE_SingleMountain003": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountain003.mtl",
+      "sourceSha256": "b077cc12a7066eb4baf9e9e5ec7024904f70e849b5083e5f7b8a752b26a65e62",
+      "textures": {
+        "Heightmap": "Mountain_Single_03_HM",
+        "IDMap": "Mountain_Single_03_ID",
+        "BlendMap": "Mountain_Single_03_HBLEND"
+      }
+    },
+    "FEATURE_SingleMountain004": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountain004.mtl",
+      "sourceSha256": "9f2cbc32195b5d1bd2ae50f771ff849d18c3867b1e0368fac192e6456ac38cf4",
+      "textures": {
+        "Heightmap": "Mountain_Single_04_HM",
+        "IDMap": "Mountain_Single_04_ID",
+        "BlendMap": "Mountain_Single_04_HBLEND"
+      }
+    },
+    "FEATURE_SingleMountain005": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountain005.mtl",
+      "sourceSha256": "b6c0911248760aff73a722e13757093db5885f4c88c5ca0d1e56f1a25f3ba936",
+      "textures": {
+        "Heightmap": "Mountain_Single_05_HM",
+        "IDMap": "Mountain_Single_05_ID",
+        "BlendMap": "Mountain_Single_05_HBLEND"
+      }
+    },
+    "FEATURE_SingleMountainDesert001": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountainDesert001.mtl",
+      "sourceSha256": "493f440ef5f6999bdd4b33ea7750654f449386d55ca19912a4dcc2af50674825",
+      "textures": {
+        "Heightmap": "MountainDesert_Single_01_HM",
+        "IDMap": "MountainDesert_Single_01_ID",
+        "BlendMap": "MountainDesert_Single_01_HBLEND"
+      }
+    },
+    "FEATURE_SingleMountainDesert002": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountainDesert002.mtl",
+      "sourceSha256": "4c304bebaa597248d76cd8048af4b5d5e66c1a4aa4230cda8ce7eb117689ea03",
+      "textures": {
+        "Heightmap": "MountainDesert_Single_02_HM",
+        "IDMap": "MountainDesert_Single_02_ID",
+        "BlendMap": "MountainDesert_Single_02_HBLEND"
+      }
+    },
+    "FEATURE_SingleMountainDesert003": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountainDesert003.mtl",
+      "sourceSha256": "a0b147fac93f67aa912e92ac9beee84c29352f898ced70df5b84e596b61d4469",
+      "textures": {
+        "Heightmap": "MountainDesert_Single_03_HM",
+        "IDMap": "MountainDesert_Single_03_ID",
+        "BlendMap": "MountainDesert_Single_03_HBLEND"
+      }
+    },
+    "FEATURE_SingleMountainDesert004": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\FEATURE_SingleMountainDesert004.mtl",
+      "sourceSha256": "dce52d473cca64b2313f1fd1f99a8ba85e677dfb6632c3b5920fe46697e7a172",
+      "textures": {
+        "Heightmap": "MountainDesert_Single_04_HM",
+        "IDMap": "MountainDesert_Single_04_ID",
+        "BlendMap": "MountainDesert_Single_04_HBLEND"
+      }
+    },
+    "HillElement": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\HillElement.mtl",
+      "sourceSha256": "8b4768a3c7449047e30bf58ef4c9ad33477f5e192b433ef4e4a69c2a8605703f",
+      "textures": {
+        "Heightmap": "TER_Hills_Standard_Element"
+      }
+    },
+    "RES_Stone": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\RES_Stone.mtl",
+      "sourceSha256": "3736b16962805db85b78dfd76f6f4bdc935058b9a766b443b50c8e5d34f68b66",
+      "textures": {
+        "BaseColor": "RES_Stone_B",
+        "Normal": "RES_Stone_N",
+        "Gloss": "RES_Stone_G"
+      }
+    },
+    "TER_Desert_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Desert_Base.mtl",
+      "sourceSha256": "da5a2031a887d7807f774203c5ed33caf712c5e801889f4a82f1855e6bc4a7b3",
+      "textures": {
+        "BaseColor": "TER_Desert_B",
+        "Heightmap": "TER_Desert_H"
+      }
+    },
+    "TER_Desert_Hills": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Desert_Hills.mtl",
+      "sourceSha256": "8522c508e86161f97747d9fd1441384d0da48e5bb85b04a417218d19e55f3e80",
+      "textures": {
+        "BaseColor": "TER_Desert_Hills_B",
+        "Heightmap": "TER_Desert_Hills_H"
+      }
+    },
+    "TER_Grassland_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Grassland_Base.mtl",
+      "sourceSha256": "c8127218cee3aba393a1dbc9bfcf8ffea2daed8edb1817d761c9ad07bb133130",
+      "textures": {
+        "BaseColor": "TER_Grass_B",
+        "Heightmap": "TER_Grass_H"
+      }
+    },
+    "TER_Grassland_Top_Hills": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Grassland_Top_Hills.mtl",
+      "sourceSha256": "742441ddc5469d558edca16c590b03b572037b1c52f16e53bcba93141e92d627",
+      "textures": {
+        "BaseColor": "TER_Grass_Top_B",
+        "Heightmap": "TER_Grass_H"
+      }
+    },
+    "TER_Mountain_Desert_Stripe01": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Mountain_Desert_Stripe01.mtl",
+      "sourceSha256": "a44f79073756a4465593289623657443f7866624824169dc6b29622311e0553d",
+      "textures": {
+        "BaseColor": "TER_Mountain_Desert_Stripe01_B",
+        "Heightmap": "TER_Mountain_Desert_Stripe01_H"
+      }
+    },
+    "TER_Plains_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Plains_Base.mtl",
+      "sourceSha256": "3fc93f948844cb7a887b8f45bca85074899a2cd47e49405a46918c5303755c34",
+      "textures": {
+        "BaseColor": "TER_Plains_B",
+        "Heightmap": "TER_Plains_H"
+      }
+    },
+    "TER_Plains_Top_Hills": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Plains_Top_Hills.mtl",
+      "sourceSha256": "5964b565d8818852f5625aa18627c564fe2aaa5440fe8368bb08ddf4942455fe",
+      "textures": {
+        "BaseColor": "TER_Plains_Top_B",
+        "Heightmap": "TER_Plains_H"
+      }
+    },
+    "TER_Snow_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Snow_Base.mtl",
+      "sourceSha256": "4359d7425cc5fda2cd331e28a5be5f90c9cd839c20d664f843d9edaf55b05031",
+      "textures": {
+        "BaseColor": "TER_Snow_B",
+        "Heightmap": "TER_Snow_H"
+      }
+    },
+    "TER_Tundra_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Tundra_Base.mtl",
+      "sourceSha256": "6e232ebd2240d8e6457d91f49ab273dc6a27521dac58157366251d484015d5d5",
+      "textures": {
+        "BaseColor": "TER_Tundra_B",
+        "Heightmap": "TER_Tundra_H"
+      }
+    },
+    "Tree_Jungle_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\Tree_Jungle_Base.mtl",
+      "sourceSha256": "74b8aaf4517fb50b5be9ad42f9378bcdf6f54ce0857befbc5e4237b9404b5d09",
+      "textures": {
+        "BaseColor": "Tree_Jungle_B",
+        "Normal": "Tree_Jungle_N",
+        "Gloss": "Tree_Jungle_G"
+      }
+    },
+    "Trees_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\Trees_Base.mtl",
+      "sourceSha256": "b3d4ef20e648b3678a8f4ea707e60825246ec8d63461bf6f97f6cd389b31b398",
+      "textures": {
+        "BaseColor": "Trees_B",
+        "Normal": "Trees_N",
+        "Gloss": "Trees_G",
+        "AO": "Trees_A"
+      }
+    },
+    "Trees_Decid": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\Trees_Decid.mtl",
+      "sourceSha256": "ebbc3228c6bd8c2d314e6727a26fa811c8c45420e3d6abbdddbd877703a4eeb6",
+      "textures": {
+        "BaseColor": "Trees_Decid_B",
+        "Normal": "Trees_Decid_N"
+      }
+    },
+    "Trees_Pine": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\Trees_Pine.mtl",
+      "sourceSha256": "f8578557de387e5331f24ddab9587889bed2d5ff354fa832360b1b90b676de35",
+      "textures": {
+        "BaseColor": "Trees_Pine_B",
+        "Normal": "Trees_Pine_N",
+        "Gloss": "Trees_G"
+      }
+    },
+    "Trees_Pine_Snow": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\Trees_Pine_Snow.mtl",
+      "sourceSha256": "3431c50003dc6f40079bec08a5174b53b0d11b3f897f61f9babb992ef593f879",
+      "textures": {
+        "BaseColor": "Trees_Pine_Snow_B",
+        "Normal": "Trees_Pine_N",
+        "Gloss": "Trees_G"
+      }
+    },
+    "TER_Mountain_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Mountain_Base.mtl",
+      "sourceSha256": "72967cae9ae447eb15df2f7f5dc0e64e17f61877b6141beb9c14871b3feecaae",
+      "textures": {
+        "BaseColor": "TER_Mountain_B",
+        "Heightmap": "TER_Mountain_H",
+        "Spec": "TER_Mountain_G",
+        "FOWColor": "FOW_Ground_Mountain",
+        "Fuzz": "TER_Mountain_F"
+      }
+    },
+    "TER_Mountain_Top": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Mountain_Top.mtl",
+      "sourceSha256": "948557b881fcd899b20e523a7627d2d522936a8c359f4c831268630f40e51749",
+      "textures": {
+        "BaseColor": "TER_Mountain_Top_B",
+        "Heightmap": "TER_Mountain_Top_H",
+        "Spec": "TER_Mountain_G",
+        "FOWColor": "FOW_Ground_Mountain_Snow",
+        "Fuzz": "TER_Mountain_F"
+      }
+    },
+    "TER_Mountain_Snow": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Mountain_Snow.mtl",
+      "sourceSha256": "c4266a6e3e7db90b1163e1e19fab4a6fe61d23537cc242c18ff760c74350900c",
+      "textures": {
+        "BaseColor": "TER_Mountain_Snow_B",
+        "Heightmap": "TER_Mountain_Snow_H",
+        "Spec": "TER_Snow_G",
+        "FOWColor": "FOW_Ground_Snow",
+        "Fuzz": "TER_Mountain_Snow_F"
+      }
+    },
+    "TER_Mountain_Desert_Base": {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Materials\\TER_Mountain_Desert_Base.mtl",
+      "sourceSha256": "27eefd311c4bf521b91772e67cadee62d01257a8475e8c585df89b881d233c5b",
+      "textures": {
+        "BaseColor": "TER_Mountain_Desert_B",
+        "Heightmap": "TER_Mountain_H",
+        "Spec": "TER_Mountain_G",
+        "FOWColor": "FOW_Ground_Mountain",
+        "Fuzz": "TER_Mountain_F"
+      }
+    }
+  },
+  "textures": [
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\FOW_Ground_Mountain.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\FOW_Ground_Mountain.png",
+      "sourceSha256": "189853b37228974addfba97cba4f9c1fe63cfbcda58c115c9c0c0e7c515fe959",
+      "outputSha256": "01b1406acdafa2bfe5cc2d5e800a44b82b854b4d2a1e401aeb91fc36f7b823d5",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "b0e9138386db1364d537afe037a4a0dd9abcdb5c7afd72a57316c74901837c49"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\FOW_Ground_Mountain_Snow.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\FOW_Ground_Mountain_Snow.png",
+      "sourceSha256": "b54e7db7a76934ffd79fd476696775aab778513cba314cea73787b541728df06",
+      "outputSha256": "1316e4f821eb6ac2704318cab6a4aabd346442e9123e787a7b3d9c0e4c29aa0b",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "3e75ecb5ae4cb5312bf7cf452d6eef7ba52d30c45228335144d425845de83e4b"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\FOW_Ground_Snow.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\FOW_Ground_Snow.png",
+      "sourceSha256": "1da61e512d48d3c748ff12150dfc33027003c79ed7b13df5c68a8846c8bb906f",
+      "outputSha256": "23eec33a3c23106f1ed256222186f82a58131b6560f674714dd480587da4099a",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "587ae2e4091a309f040105aa2bdbe33df4433b439a5fb1324c2edda5e1e258b9"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_01_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_01_HBLEND.png",
+      "sourceSha256": "52b26f1abc44abc22aae610782fa8c961cd28e1efc7d36e06e53772031912a3e",
+      "outputSha256": "b9cde7f2c9e7cf0c561e97c4d2ba082d1855f7abf368ed6cf954b4afb827caa6",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "0578ff7ba02caaafc78193d1662961dcc46ae0f7bf04ac64da8b75d17f5e06db"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_01_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_01_HM.png",
+      "sourceSha256": "01040f57171ff9f2b994a93f149aa3cdbb4271284042ecaa2538b31ba161d080",
+      "outputSha256": "f0af59e24c25f99b521824006849fa51045114bffc584eef2a763e4c9b647d6e",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "8de6d410f703041e2eb0bf1b9b0b1f3e21a8103b05279f4b4ca43b482f39455e"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_01_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_01_ID.png",
+      "sourceSha256": "41d307837829ee7dacaf5dffad5f3d90aff4de34e1ca0aa62dc89595fb9d6966",
+      "outputSha256": "68b5d8294bb67030ef10b1921c66dbfc3dcd9a3535fc2d4dcd108fef733da8e9",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "5f62b6b8af987a047f8aa180cfc8fc010f1c37d1329bacdf0cbce7df8d8498f1"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_02_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_02_HBLEND.png",
+      "sourceSha256": "e0b7c27f5c46e7b3983d81e27d3006e8d7a76031e100954d415e30f8b3e1c3fa",
+      "outputSha256": "2ac93692459d7afaece688967bf875bf95e4a201d5f7fcf9158f65a782e11208",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "5caed164c1775eafb785fe3f9d4a58525097ce4b01675f47fc891cbd6968557b"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_02_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_02_HM.png",
+      "sourceSha256": "51af96cd45162dd73fa8b78fc94281c628db9b92f5373b908238c3e4fdefe1a2",
+      "outputSha256": "d72502f709d6a5e7c49b90b80bdad4a09664c5301fdb178e7abcc09795bf046e",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "135019e1c2abf54c416b61dc2b1e1ad3dfda6e8a2a5985aaee2d3efb7d300006"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_02_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_02_ID.png",
+      "sourceSha256": "ecc5ba97f416e008ad6b4606700666a42f8c3fc877491b9724598ace784a4503",
+      "outputSha256": "f51b5617379b7183a72935e93a47c98e9e5fb3de9f50ee5556f3944eeb9edb0c",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "357fc3f9e63513a3e9bdb939b4e2c464773e23acfec1a52d7b7b39f7d251d8d6"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_03_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_03_HBLEND.png",
+      "sourceSha256": "68ff3437a06c42fc7ecaf56692b3bda564a0a688d5f58010e2d98db3f0cf1192",
+      "outputSha256": "8e8d4297660c82242ed9f8d6b28b56feb4925ad0d04aec7a0bb809ebc455e740",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "5e5aa1671395844f777f01c11e3d826a0128643ebe20ee359f8575a788ea60c1"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_03_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_03_HM.png",
+      "sourceSha256": "bcb1bfa524b7d09a251054201424e4f3b2935f8f6853ba63b144ebf88538e6ab",
+      "outputSha256": "defb7481d6d31c7ce8a242f798942fe619e959b77dc4e54174b96f4a9223ad3c",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "cb380445125b54448f5b2243233f7546907e74ad1642b7deec5b9eda377686dc"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_03_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_03_ID.png",
+      "sourceSha256": "9cb233c366a7fb354e1f157a5cbe59660be98b0cba32532463f0bcc8ac5b11a1",
+      "outputSha256": "dc77f7ac97e9238499561aae7c0ff3c5f67f36efdd953ac525293b3e68c16552",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "5c866a13598f63ef74e8c738d45d30f9dbeeccd99600980f146a193f4e5c2456"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_04_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_04_HBLEND.png",
+      "sourceSha256": "2ec5557b2242c48bc8afa92ef1b4dc3ed885347800fa42cf01456ebcbbf397e0",
+      "outputSha256": "15738823d6d42f92419cbef7ef8741cdec008d2d18d4d3861d41b09f3be5d36f",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "38e3e27b404a394e3cdae3172d627dbcf8e34f16d99852ba1cfc6f635da8df81"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_04_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_04_HM.png",
+      "sourceSha256": "68af684ed8f9260c84bc369393fa748dbe8c5acf17ad6f12d1c7be21618d2636",
+      "outputSha256": "17410778dc5273f047931a424b1db2822ad67de440754546681c8ed02ed40710",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "b11ec2e20fb4c2d79449deabc1b64becbf88163f53a30085992d3dd850522754"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\MountainDesert_Single_04_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\MountainDesert_Single_04_ID.png",
+      "sourceSha256": "7ee7bdb4e182b9c8f294b9492cebc499d8bcc4fe948525651e7096847048c9dd",
+      "outputSha256": "00a44d3a8faea7abe16fba3d051b07bf906d92737c4486c5eb7c2f3753c82cb8",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "0893f4761cf6bf29920b24e0ebef23e79f06e66d1356672b90a8dfbb90592c7f"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_01_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_01_HBLEND.png",
+      "sourceSha256": "e3023a3e2811d94c895582b629814910ba8f54c92b73ebc3d485b4d6214c12a3",
+      "outputSha256": "bd813e7ec3abda0f5e79ba271e027d4eac8f8e7ea493470e5eb0e0b1559fec47",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "6d0da4e23055523d1187387e4735691238cf3421324b96d3549cb038aba2022e"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_01_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_01_HM.png",
+      "sourceSha256": "efc738b8384f5d061797c7461175772b08c56ff386064d31e4ce44e20708d1cd",
+      "outputSha256": "b922bc947a0b121051aebe57d7b3d26847f965e966ece2762a01cff5ae3a7957",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "eacf73ce40a720c4788518674a0fa2589264be20deaa561e7dd7f9c98fca64b3"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_01_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_01_ID.png",
+      "sourceSha256": "e9a2b7aaf3b56d74b417dc169bf6e341e9f456d941ef31716b2604da314166a2",
+      "outputSha256": "f2f9eb5003445fee7b99560ef59647e5d3264e5fcb1b6092aa80212b1bbf64e8",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "6821748d0c6f48a222fd2a37ff635edf2f5e8800a936f1cc7b992642dc9605b5"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_02_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_02_HBLEND.png",
+      "sourceSha256": "1a4754e556a823abdb072b48154796a996599294b479eac836097afe7701c44a",
+      "outputSha256": "8e123a7a662e501f261329f9664656f3f5f5855a1e4f2ecae3e4a35438658f1b",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "55d3cb4e3cea0b64ae20fa35c6e311d5baa13a30cf8491fb4632a87dffea9180"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_02_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_02_HM.png",
+      "sourceSha256": "4e630b02c870c12c1ad65918a77ad93f218efdd3830e3874b42cf281ea821e55",
+      "outputSha256": "23ac0fe6ae526ea8e2a2871a8418e0ad67809a2c1dd4ec3ba698e00fcf50d6cb",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "aee224f8e04da74f703e702d2f51f22e7c8cb853319e196f5a1eb0114e5bac40"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_02_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_02_ID.png",
+      "sourceSha256": "241cb7ffbd076847a11e70b887891af0f6b610071fd6e890d7eb59fc83ab0331",
+      "outputSha256": "c0be742caeecca0bd0af17f89b9aa8b135c3d3ac2bffd2c0ef40ad3407305a0c",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "ac6802abad5bc1f08c5189360c80f702b9eb6af52887f0daada70c8ae043c70d"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_03_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_03_HBLEND.png",
+      "sourceSha256": "8344aef74974fdc29a5fcef074196e4accd263c2ed41550111fd3405f6403fd6",
+      "outputSha256": "a83a5f303b8e066254194688a076aaa3e4b2eb481a474703f1ef727079e0313c",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "8e54d370279a1eeed381dc0cd101e413778d86264b59e71395aa6480f06dc23b"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_03_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_03_HM.png",
+      "sourceSha256": "a42a482897e19803a6007b2306b44ed13f8f339ae0f698b42fa57e3c86732f0d",
+      "outputSha256": "ceca1afe7a39fbd4419cf7ee4d227c0541eb5721f9189f2cf97bc2c747a4e623",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "1fc4c3c962b5945682d72203b5341b97bb32dae8333cb9ab2e176c62404473ea"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_03_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_03_ID.png",
+      "sourceSha256": "4a696c133ebe6b329e3dee39083104fe233716a5f7eb7fcfa14f066b2b732b58",
+      "outputSha256": "d636351a218089d6e4946dd88fd06ead8ffaa6fb823f8e29a382a44709c70534",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "6b7e5a4f0529b0515074a9b71d134030b56540a9951ac6e5fd70a0b083ae8df2"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_04_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_04_HBLEND.png",
+      "sourceSha256": "79a4a916b01faf2462f8686cc3dad727825f3186449be19433a7c32668ee3856",
+      "outputSha256": "060af2e8c848ac16eba583d20de177e61f1da5282463d19285bddaf0ba917f31",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "a409f08ab1bd7ac3d86087b600782c3ea1a30841b3cace259abb2971d18c9910"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_04_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_04_HM.png",
+      "sourceSha256": "83994eb1a5bdc0539b753f11595479f39581fab76eb59df8a628e0648fdfd612",
+      "outputSha256": "d7b764dbe1091a9589aec92beb021024614b40e603f520a1e0d248ac60d57dbb",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "257038ac528143dbba576841ac7729b6aa5e3d347ab27e490c512d460b4a591c"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_04_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_04_ID.png",
+      "sourceSha256": "f3ea4d7a66f7573419cb39d8d51bf1b65bc23c87965bb51340271d7e8129ede9",
+      "outputSha256": "11fa9bf524af543e132b5d16f8c29fa1b636d01ba8fdb4fdf7da8f3307b4e4fb",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "d9b11e0d7602c829315f2bcd40699e6cc4580c7bf6ff5de57903c6d2afc0c87e"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_05_HBLEND.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_05_HBLEND.png",
+      "sourceSha256": "0a74e79b012cf5caaaecd1b0278b36ecd28626e88943a7f958a13032f30fcc5c",
+      "outputSha256": "21efbbc1407a7a48e5747c82535d7fd21db93512e94377f7f6c5ac061544da5f",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 2,
+      "sourceSingleChannel": "alpha",
+      "mode": "L",
+      "method": "DDS single-channel top mip bytes copied directly to PNG grayscale; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "85013673e550b4cb8f2ff130a6d0dbe083a09b63d3bcac58170e368b7fe6665e"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_05_HM.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_05_HM.png",
+      "sourceSha256": "ff53492fd71ab46f59a69e80cb87136d50533affe330b1e421f953803313bf78",
+      "outputSha256": "f91fce486a441736c98694ff66a152526f10fb42e25f4794f94de37ed2c51003",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "0e5216ef2a075ada67bb29a7e2dfb0a5b290e4ff5ccf91f6056abf6aed69248a"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Mountain_Single_05_ID.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Mountain_Single_05_ID.png",
+      "sourceSha256": "bc62c8aba88768caa091699bf315d27f5b7f51b9e6f2d9de247b33e27d8075af",
+      "outputSha256": "a2c51a6237e9c7e15f7c5074d97559351f6132b5430f7239087f14d1d1051631",
+      "width": 256,
+      "height": 256,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "f9b70d8f30f6cfe5af597e1b0a96191864a9e8aa90c5d16aa5f082efef395012"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\RES_Stone_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\RES_Stone_B.png",
+      "sourceSha256": "2ebd9c0ff610e5abf843d2f07f680d39f3266523d063695023b97019d68f9c4d",
+      "outputSha256": "633e3c1c638ebda756d530d8dc121e30a0dc3e0d8ce174ed4ba64759aab7ad97",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "fe5479c1cf23a90b075251f744dd74bec0fe3bccb5cf160257db3e8026854bdc"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\RES_Stone_G.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\RES_Stone_G.png",
+      "sourceSha256": "fffefc953f78e10f9267b986d3784df15c9230aaadc5f968653e273fcde8564f",
+      "outputSha256": "a920bbdb8c0aa076af21484452f6f6b922baec9e576414ce6aad6e1254dd2116",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "1cad32a48b789d0e460f2077be16d6c0faabf93e04614844f19eb2f43670d513"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\RES_Stone_N.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\RES_Stone_N.png",
+      "sourceSha256": "0202a0e6828d1fe19973471a02ea1cf220bbd30dac2b5673822e81b65bdbb3af",
+      "outputSha256": "1446dbce63950d4f424a526bb1821e79bc06a07f97697864fc06aefa3ab98a0d",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "b8a581ead0c7f2ebcd7f0a4ebf9aa0dd1ad4aea8e0df44a929ee791e154d8b38"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Desert_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Desert_B.png",
+      "sourceSha256": "10b6e9b75e9357eb70ecb67af1794d7b330c15f01812c533c3597a5abca9879b",
+      "outputSha256": "855a67a61abaad2f76717667aaad5b308f4965140486f9566f95215bed567fe9",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "fec67ae85f61728c767b9a22355518fdfd43cfbb4f31dd1c296afe76083fb849"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Desert_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Desert_H.png",
+      "sourceSha256": "b87f26f1823eab2e7cface76e55e0f7810d9871265a0d4b6dc10516972505c85",
+      "outputSha256": "e8a7177789918a20117986c0e5aeed9a3587253d07084a81862e70f24871e785",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "fef1e86e9506fad83e304b393a46ccd763347bb47ba771300223f9f9dde40df4"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Desert_Hills_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Desert_Hills_B.png",
+      "sourceSha256": "125058a621213cde723f386a615838bbf10b95024e611ea97b7c4287084bfa78",
+      "outputSha256": "4ba866b8a98fe93fdf6b186c599b2731e4c9b5d9962d756a223c85890791629d",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "d1823324f53debb91ee3f218fab50fba34c4fb202ba24828def22d4e4e9d78bb"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Desert_Hills_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Desert_Hills_H.png",
+      "sourceSha256": "b61055406ab36ab9bc0ddac279118e1cb657ae90184aec44f3f95e01f3f9ef09",
+      "outputSha256": "55669a3769ddbd6eefd33abd99d82698bd0e5be89b210f919c161a2014fd2559",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "cc2eb06e09dc37cc1952754038a4ddc0b84c168d2301646bcfcf242e76b4ed12"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Grass_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Grass_B.png",
+      "sourceSha256": "d58d6b793e7099d75858ac2f598250a69f5b12c85265fdd346091dc462a5d852",
+      "outputSha256": "d4c7826cd9191081d46f29da585b2bed108c8e76419912ed0f4fb2631ecc52db",
+      "width": 4096,
+      "height": 4096,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "853f9b5f07bab01ac1bcf39f0a33e2c8b63d6e18d3dab7cf3c52d05b79d4c5da"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Grass_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Grass_H.png",
+      "sourceSha256": "679f3de3e572d1211848ec707b8fdc19d626bf57d7292c238a69c80bf8ec89f0",
+      "outputSha256": "7d636acfba814337809e09ea59aaa6c8baa4267833112c73277d8782ad78844e",
+      "width": 4096,
+      "height": 4096,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "738b8d33a3184c2f44be103c60ffe3721edf74ca84c3383b076b4cea5f14b762"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Grass_Top_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Grass_Top_B.png",
+      "sourceSha256": "e49b33fbff09c2a75bcc6cd4fe5cd765d74d7ab40e8abfd714452b071ba033b2",
+      "outputSha256": "f819ebb9bfd2ed27948ae2df1007048a5c6b8c09508fe09bfe485e65a15b0913",
+      "width": 4096,
+      "height": 4096,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "1572130b5ce64872ca6b72a644945d48478b8411e1ee87ea55d4c04c322cc2ec"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Hills_Standard_Element.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Hills_Standard_Element.png",
+      "sourceSha256": "7c929fbf2f8536e860a64551444c2a5f7b4875afa275c67cdb2ecc5283d4e2fb",
+      "outputSha256": "9f11f5610d0082f60f2a8e4a90a010e05099183933b4dcd4ecced4728c8627a9",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "ad810676ea0441c48d09f274b24c63d644443ab09da7bce7edb42556ac9f4ff7"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_B.png",
+      "sourceSha256": "55c2d461f49992a4bd183a2b1e068ed969a12eb4a85749416a9d252e72b24732",
+      "outputSha256": "0b83dde2c1b789a4a674c8dcd929b5fe6a0fb846f1189a130f998a2cff70e609",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "285c1ee26d4c46a0db94c61eaeafb700abef5397b95bb11b776a78752416c265"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_Desert_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_Desert_B.png",
+      "sourceSha256": "5caae35c1251be52abe7e1ffca79d5a2ff3e7383deefdc234ddf29cccfd22978",
+      "outputSha256": "1b5b8f584c9e0c1c1db65f1d23264a0b8fb34ea203a77712d570e015adf5979a",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "cda8fb9494511acf16604c43a1ce7abf7be206572aa2723fb5ec946ba13e2fbb"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_Desert_Stripe01_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_Desert_Stripe01_B.png",
+      "sourceSha256": "1b776e12ae2efffaba00a2b1298816636b564909817517457a122301cf88a9b8",
+      "outputSha256": "355314ebb37a89101648b364f79cacd21e5b93fb2b84d319704b207036d1bff7",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "9a3672836217c80edb1e110915abba9b68f55cb40e0faeb69524e23ff7a54475"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_Desert_Stripe01_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_Desert_Stripe01_H.png",
+      "sourceSha256": "d305b44d1c5b76c7830375f4981e93e64cd951cd32ec6bf31a85a45ae67680cc",
+      "outputSha256": "be474a9f9eda112032232ed08292471e8d74f57dd0538c1d12eef1053a248c14",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "d46e0004a4e3de9d0063ef2bc06b6f27991fce1d56454fa306409fcbd7cfacdd"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_F.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_F.png",
+      "sourceSha256": "032087953a70f4ccf9002db580094f24a46e65a91608e4e92ded8572e4f0161a",
+      "outputSha256": "abc4f0945e189c3d9bd9144e7b38f9fa767ee648445530c3d9220dea1ff54dff",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "cfadd44a103cbd6d5726fa07b27d7aad2f67ed3930ff96901c486a5beaf7e723"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_G.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_G.png",
+      "sourceSha256": "0c265c567239203c300a612932e29ff3a76614af24957d4fa1100f311a3aafcf",
+      "outputSha256": "ca9d37b08ca01b48788ac25a872e3f4efee3551400716bf13fe5f1507e32b4cb",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "6e78c9ee43b5694d445a95a1929ee2127f3c2ab49ca8fcbf8ee92a50f30434e6"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_H.png",
+      "sourceSha256": "edfdc781bc8c6dfd26dfa1f75e7947b0a68cb7a63a948009170024b188718a09",
+      "outputSha256": "e2b3e12b312a7b0a1fa9fde3ad9dac86624dd88dfb3dead34178526b31ee2d89",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "1b71e1d4afbbd68e68163ed40ca88c3f52fb70ddc3d25d23ad5f97c524ceff69"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_Snow_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_Snow_B.png",
+      "sourceSha256": "f9d4e6a202d41a5564b1823513fb8257456862db690c177b2f43e704c251afb6",
+      "outputSha256": "560bf9b551afdbc7f523ee7cbfd7d8e96be7b6bfd4123b7ef78d09357634d93c",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "ddf9f2f5703eb0c93371ed2b9c78a6d2bbdc0d7be2336d6259f15f69e19cee68"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_Snow_F.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_Snow_F.png",
+      "sourceSha256": "032087953a70f4ccf9002db580094f24a46e65a91608e4e92ded8572e4f0161a",
+      "outputSha256": "abc4f0945e189c3d9bd9144e7b38f9fa767ee648445530c3d9220dea1ff54dff",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "cfadd44a103cbd6d5726fa07b27d7aad2f67ed3930ff96901c486a5beaf7e723"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_Snow_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_Snow_H.png",
+      "sourceSha256": "6979fa4d0f0d4159d6a02eba83359bc2f53e8cd50433a0ae2f5e6e4dbed987ef",
+      "outputSha256": "35bec35061b51fab883c52a1b6060f86f7505214cbd0e90b67f32e225e5ee10c",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "cee10e3ef87b49e9bdd42485d534d2a866ec2214ab3b2a5520a8f5d40fa0382f"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_Top_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_Top_B.png",
+      "sourceSha256": "95b815c1de966e34684567f18b9358e5716946742e20d8028fa349c7d291e016",
+      "outputSha256": "a5297d780ac58500e012d6e510b656e94d97afe7ba728b4dccf9b7d15c3b5a4a",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "9e160dc9e0e74ad8a249b7061046c97244d2792f50e5203bf0a05f67a3945dd8"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Mountain_Top_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Mountain_Top_H.png",
+      "sourceSha256": "6281ba7dc05a6b60e1e7c242915bffb425c74cb341256489c1a9cea523ed43b1",
+      "outputSha256": "656cb2edeef599b84ae916203d130399c2e6893b4572d55aa8787a355292e309",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "24eb2e5a62ae413223a63313bb1196accd0c3756c4e90577171e4fe9705f14a4"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Plains_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Plains_B.png",
+      "sourceSha256": "e909d9089d35cdd2cbed4a74b561ab10c80d4f3db1b48c6f919597dc68503d01",
+      "outputSha256": "4ab221a4a95d36788a7ee74903372075c1d83dd303cce779afcc1f943bf78b22",
+      "width": 4096,
+      "height": 4096,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "7dea22dcb6081bbf4011621be2aa8f77954c80f0f4d23b892033764d105b688a"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Plains_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Plains_H.png",
+      "sourceSha256": "7bcd4cd9ba0664baa99a6b39bd00be27ea88bc244cefcf5064a19f81535c7579",
+      "outputSha256": "83d02eb3b66cb47045d24ba15d12b828dfe5fc2194a66789b9c87a6551e92383",
+      "width": 4096,
+      "height": 4096,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "f3ab7141065d11587b016e22d681abfe7e8ab79560433c5a4a39417e2df3776c"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Plains_Top_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Plains_Top_B.png",
+      "sourceSha256": "34323258ebe2610bf864fbfc82d64a0af3301967c9188cfcb9d78fd04088624a",
+      "outputSha256": "5458ab63a8ac93709cadeb369fbabc6740c55dd105f0e58c75d1230c5525c4dd",
+      "width": 4096,
+      "height": 4096,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "abd6640fa75b7794887d3c4cbe228a943828530f724b45ace438595c72c77037"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Snow_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Snow_B.png",
+      "sourceSha256": "79c9af6e6b4564ee9fd526d22a14f13e9b81497f35f6683bd18c80a992f0e11f",
+      "outputSha256": "facaaba2fdb6ce0d93a770d6e5605a8bcd14c299c20a5cf6baf41600c05eb4ed",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "ebce93513e4de8f635908ca8c369cfeef46fb1c52cf882eb3c9d0c13e5901c17"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Snow_G.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Snow_G.png",
+      "sourceSha256": "aea9e6f13a5c52a13f27c774516c9af91f69d77b67f89cdd724a38efcaabb114",
+      "outputSha256": "4e961ba9f26c3473c3d842acff803f3644c55f1a2e950d6d949801bab30f1737",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "e2ce115f13f3b37a6a1dca09e2ed58d9aad301254e2f9aa7acff65146e8784b8"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Snow_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Snow_H.png",
+      "sourceSha256": "3845815d443a1020fb7b2300487f5b04885ae20ea7df699abdf171e71e1514b2",
+      "outputSha256": "28d7cf2d39782fcf597f0f655d45aff3faca452eba9247009de571171974d8ea",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "8c53589c963cf88393ae5ffa073934d5ceaea7ee57ab2aaf2e6d3075a75e60a4"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Tundra_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Tundra_B.png",
+      "sourceSha256": "82192ebdea50b0c3fca1ef60062a4757ffd6041a44c6b04470137bc49d78a5a4",
+      "outputSha256": "39a2ffabba542f163c2f3fac33edba8535998efdc857669aa16491cdbcebaec4",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "a8b11cb665abbb1bb65cd4bcee1c495e5a8e50e33d8a8b713d2b26064a855130"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\TER_Tundra_H.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\TER_Tundra_H.png",
+      "sourceSha256": "264d07f25d455e265a7c5ac6d0277a4cd358caa5b09d6a4848c18f7bc9fdc898",
+      "outputSha256": "92b2c51c0de8ef73286e4590a3c8e54b3471012ae11d96315cabd909fe09469e",
+      "width": 2048,
+      "height": 2048,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "ce450c575ae183d37b3155bfa1c08c97ad42ef92332be92798cc96e78057daa1"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Tree_Jungle_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Tree_Jungle_B.png",
+      "sourceSha256": "3882b7f5ab2a4dba215a0f64de012b38c6231269fb66ebc681848db40ac765b2",
+      "outputSha256": "050aa3d7693842a52c3c57f81fe61bf1481c1537e3d83bf9cc425cab7e2420df",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "26e6f0e2572040dcf4bb22256b06319525c069c520771ec7c002ade4a45d0a2b"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Tree_Jungle_G.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Tree_Jungle_G.png",
+      "sourceSha256": "28d05739f961330a59b6aa0870ad8e921907cdfe5e9f3257f6641b6d79678afa",
+      "outputSha256": "186c541c0dea145c5d0485a54213ac31ef883cf3c23ab37270bf6c582eb0b92c",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "8dbbeaf6b9035569efa52cd85cd1cbaaca7aedcdf0990fd71b93e086c6db66d5"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Tree_Jungle_N.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Tree_Jungle_N.png",
+      "sourceSha256": "972cef62f0f40b5951d06bb56fed0aeaaf458036f43fa6a81cd8b7c678b2f4ac",
+      "outputSha256": "a34bc51048ef859124925a82eb01d8d39c5d0f0b323b956b2cdc5a7bdf00f069",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "fb05fe8490084da5b8dbacb9fcf3622bec5fb4eee6aac423637b3a1ea764c8da"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_A.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_A.png",
+      "sourceSha256": "176089417fdaf8867720ce82cc1dc0617c1511a34020518f0646e067bc99772a",
+      "outputSha256": "eca73b8ad349740374a1fc4fabd0efd3cceeca76660ee51b4ff0af3813efa82b",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "0ac138d723a42abffa889af332c772a76bac9ad15b675394bf1c864947676827"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_B.png",
+      "sourceSha256": "ae4ae23f1f1dea79147c7439e7dfb2a0c10b59f94a061d6d338fc34efa5cc797",
+      "outputSha256": "c974aaa92ba861f23674c3244d05de3feaab858390e69382c16ef64018a559e4",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "8c97eaf5539102fd533570277ada90a3690e0215f7efe22c74994b23858082c5"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_Decid_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_Decid_B.png",
+      "sourceSha256": "2f18cf0dd76f4375a6283ea71af85be399162c46c384b2657adddbe421717aba",
+      "outputSha256": "0c99ecc23da6262066ba444604342863a55a0b2381bb9fb9ff2380dd3941fb8b",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "de70a4918a9ffb964b52c7d48738df64bb47d49afc3392feeb31be8bf1745c3f"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_Decid_N.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_Decid_N.png",
+      "sourceSha256": "8dafc80667b7bf1b7f8eb800021514727b1f39029de78ef56898babfb1ee7483",
+      "outputSha256": "a23269e4bc3d8d8fe741b01014dcdaf1368cbebb2713015063d5467ae1abfec2",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "993b573094301496cc3ff7b8b926348eb83edba688b8a6303b40546958736d4c"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_G.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_G.png",
+      "sourceSha256": "d71e7048d4cf7a3adef6d45f100227e19a0ce04001401ad761122f957ebee5fc",
+      "outputSha256": "a06b17481a1ca1c9957597bca41bc383848884f65f2dba3f2ecaf44bf2784101",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 64,
+      "sourceSingleChannel": null,
+      "mode": "RGB",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "44868db0df7ebf763d20d387fc50301dde744c775c75c55e299833f5cabac6cd"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_N.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_N.png",
+      "sourceSha256": "977dca1d419a3259e9b2c1d49ec533a7721eb14685ad50a3d107d7c728a7e072",
+      "outputSha256": "345fb9c7e095c9e0ae7db107e2d48d0471548aa18e77bc20629f2a781c66a325",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "6810cb2d2175e5af648ca2dcffcd74b021b74b6defa54589cc69e69a0a4c4ec9"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_Pine_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_Pine_B.png",
+      "sourceSha256": "594f396c3a23911d2487fa3d93b9d4cc41cde9f52e4f890fa7bcf8d315de63fd",
+      "outputSha256": "495bf7db64a730c0e521fb595d2bb7ecf15e8c49b75ddc9dc2f094c24e5438f1",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "d2c0ab446a8185fa02a83ebe17b8d04a986603946fda7bd2994abf8c2020b70b"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_Pine_N.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_Pine_N.png",
+      "sourceSha256": "3f79bfc07cdac359a0c8568edfd83f24d326a91982f693afc0fdadbc24c593ce",
+      "outputSha256": "8454b07a422f2b6094086d4ae930a7feba5d0edc017f2c59a2e58c0a29b593e0",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "2e9acae8959f9fadc02a5a44ec4149f8e644184e957b48548f086fae108c078a"
+    },
+    {
+      "source": "D:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI SDK Assets\\Civ6\\pantry\\Textures\\Trees_Pine_Snow_B.dds",
+      "output": "D:\\ww2_new2\\Artifacts\\Civ6Reference\\Textures\\Trees_Pine_Snow_B.png",
+      "sourceSha256": "c689bfe244c5aaa9d60f66ee1e4f9833f49c84439fa7ff7a3cabacb6dda980db",
+      "outputSha256": "84dd21e0b4c17b74c5ec60a169eb03895673594a33a9ac2ea1b30fc09dd2bf70",
+      "width": 512,
+      "height": 512,
+      "fourcc": "\u0000\u0000\u0000\u0000",
+      "dxgiFormat": null,
+      "ddsPixelFlags": 65,
+      "sourceSingleChannel": null,
+      "mode": "RGBA",
+      "method": "Pillow DDS decompression; native channel values; no gamma, scaling, normalization or inversion",
+      "pngPixelRoundtripVerified": true,
+      "sourceTopMipPixelSha256": "9303031f53e26194b5ebbde293b31a2c9caf4e7667be7611f4468bdf9ba5140d"
+    }
+  ],
+  "unknowns": [
+    "Commercial reuse rights are not established by asset conversion.",
+    "Unity material reconstruction and runtime visual validation are separate work.",
+    "Static geometry only; bone/model instance transforms and animations are not applied.",
+    "Normal-map green-channel convention and texture V convention need visual validation in Unity."
+  ]
+}

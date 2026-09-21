@@ -1,0 +1,12 @@
+EarthClouds8K.jpg — Earth Clouds by Solar System Scope / INOVE
+Source: https://www.solarsystemscope.com/textures/
+Downloaded unchanged from the author's Wikimedia Commons mirror:
+https://commons.wikimedia.org/wiki/File:Solarsystemscope_texture_8k_earth_clouds.jpg
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+Based on NASA imagery; an artistic global weather composite, not live weather.
+The source JPEG is unchanged. Unity imports it as a linear BC4 cloud-coverage
+texture with mipmaps. Game shaders filter coverage, remap density, animate
+latitude-dependent winds and add smooth cloud lighting to a single cloud layer.
+Keep this attribution with distributions that include this asset.

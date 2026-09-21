@@ -1,0 +1,14 @@
+{
+  "name": "ZTKE.HexMap.Standalone.Editor",
+  "references": [
+    "ZTKE.HexMap.Standalone",
+    "ZTKE.HexMap.Runtime",
+    "WW2.SphericalTerrainPreview",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

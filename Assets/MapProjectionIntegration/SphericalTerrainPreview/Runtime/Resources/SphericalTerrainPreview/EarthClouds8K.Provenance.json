@@ -1,0 +1,10 @@
+{
+  "source": "Solar System Scope / INOVE",
+  "url": "https://www.solarsystemscope.com/textures/",
+  "mirror": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Solarsystemscope_texture_8k_earth_clouds.jpg",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "bytes": 11619184,
+  "sha256": "c792eca228989d36ebb45d3ea6ff1198be5e21a25d70d2fbcb2124ffd14ba7f5",
+  "sourceModified": false,
+  "runtime": "linear BC4 8192x4096 with mipmaps"
+}

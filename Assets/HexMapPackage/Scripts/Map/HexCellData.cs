@@ -1,0 +1,297 @@
+﻿/// <summary>
+/// HF foreground vegetation set. Species are independent from the ground
+/// material so painting a forest never changes the selected terrain.
+/// </summary>
+public enum HexVegetation : byte
+{
+	// Persisted as one byte in map saves. Append new kinds without renumbering.
+	Mixed = 0,
+	Broadleaf = 1,
+	Sapling = 2,
+	Conifer = 3,
+	Deadwood = 4,
+	ColdMixed = 5,
+	Jungle = 6
+}
+
+/// <summary>
+/// Colour themes derived from HF's per-terrain foreground colour. They tint the
+/// selected sprite composition without changing its species or density.
+/// </summary>
+public enum HexVegetationTint : byte
+{
+	Natural,
+	DeepGreen,
+	Autumn,
+	Dry,
+	Frost,
+	Pale
+}
+
+/// <summary>
+/// Container struct for bundled hex cell data.
+/// </summary>
+[System.Serializable]
+public struct HexCellData
+{
+	/// <summary>
+	/// Cell flags.
+	/// </summary>
+	public HexFlags flags;
+
+	/// <summary>
+	/// Cell values.
+	/// </summary>
+	public HexValues values;
+
+	/// <summary>
+	/// Cell coordinates.
+	/// </summary>
+	public HexCoordinates coordinates;
+
+	/// <summary>
+	/// Local visual relief, independent from simulation elevation.
+	/// </summary>
+	public HexLandform landform;
+	public HexMountainMode mountainMode;
+
+	/// <summary>
+	/// HF foreground species and exact visual density. PlantLevel remains the
+	/// compact Catlike gameplay-cost tier; these fields own presentation.
+	/// </summary>
+	public HexVegetation vegetation;
+
+	public byte vegetationDensity;
+
+	public HexVegetationTint vegetationTint;
+
+	/// <summary>
+	/// Rotation of the authored HF terrain stamp in 60-degree steps.
+	/// </summary>
+	public byte terrainRotation;
+
+	/// <summary>
+	/// HF rivers occupy complete shared hex edges, matching HoneyFramework's
+	/// corner-to-corner river graph. The low six bits map to HexDirection.
+	/// </summary>
+	public byte hfRiverEdges;
+
+	/// <summary>
+	/// Stable political owner imported from the sphere map. Zero means ocean or
+	/// no owner. A ushort is sufficient for the source IDs and keeps the
+	/// 515,900-cell world compact.
+	/// </summary>
+	public ushort countryId;
+
+	public readonly ushort CountryId => countryId;
+
+	/// <summary>
+	/// Visual-only underwater tier: 0 dry, 1 coastal/shallow, 2 offshore/deep.
+	/// It is derived from shoreline topology and is not saved.
+	/// </summary>
+	public byte visualWaterDepth;
+
+	/// <summary>
+	/// Surface elevation level.
+	/// </summary>
+	public readonly int Elevation => values.Elevation;
+
+	/// <summary>
+	/// Base elevation used by terrain geometry. The strategy-map surface uses a
+	/// common datum; submerged cells get a shallow one-step visual basin while
+	/// simulation elevation remains untouched.
+	/// </summary>
+	public readonly int VisualWaterDepth => IsUnderwater ?
+		(visualWaterDepth >= 2 ? 2 : 1) : 0;
+
+	public readonly int VisualElevation =>
+		HexMetrics.visualWaterLevel - VisualWaterDepth;
+
+	/// <summary>
+	/// Water elevation level.
+	/// </summary>
+	public readonly int WaterLevel => values.WaterLevel;
+
+	/// <summary>
+	/// Terrain type index.
+	/// </summary>
+	public readonly int TerrainTypeIndex => values.TerrainTypeIndex;
+
+	/// <summary>
+	/// Urban feature level.
+	/// </summary>
+	public readonly int UrbanLevel => values.UrbanLevel;
+
+	/// <summary>
+	/// Farm feature level.
+	/// </summary>
+	public readonly int FarmLevel => values.FarmLevel;
+
+	/// <summary>
+	/// Plant feature level.
+	/// </summary>
+	public readonly int PlantLevel => values.PlantLevel;
+
+	/// <summary>
+	/// Exact HF vegetation density from 0 through 100. The fallback keeps maps
+	/// already in memory during a hot reload visually compatible.
+	/// </summary>
+	public readonly int VegetationDensity =>
+		vegetationDensity == 0 && PlantLevel > 0 ?
+			PlantLevel == 3 ? 100 : PlantLevel * 33 : vegetationDensity;
+
+	public readonly int TerrainRotation => terrainRotation % 6;
+
+	/// <summary>
+	/// Special feature index.
+	/// </summary>
+	public readonly int SpecialIndex => values.SpecialIndex;
+
+	/// <summary>
+	/// Whether the cell is considered inside a walled region.
+	/// </summary>
+	public readonly bool Walled => flags.HasAny(HexFlags.Walled);
+
+	/// <summary>
+	/// Whether the cell contains roads.
+	/// </summary>
+	public readonly bool HasRoads => flags.HasAny(HexFlags.Roads);
+
+	/// <summary>
+	/// Whether the cell counts as explored.
+	/// </summary>
+	public readonly bool IsExplored =>
+		flags.HasAll(HexFlags.Explored | HexFlags.Explorable);
+
+	/// <summary>
+	/// Whether the cell contains a special feature.
+	/// </summary>
+	public readonly bool IsSpecial => values.SpecialIndex > 0;
+
+	/// <summary>
+	/// Whether the cell counts as underwater,
+	/// which is when water is higher than surface.
+	/// </summary>
+	public readonly bool IsUnderwater => values.WaterLevel > values.Elevation;
+
+	/// <summary>
+	/// Whether there is an incoming river.
+	/// </summary>
+	public readonly bool HasIncomingRiver => flags.HasAny(HexFlags.RiverIn);
+
+	/// <summary>
+	/// Whether there is an outgoing river.
+	/// </summary>
+	public readonly bool HasOutgoingRiver => flags.HasAny(HexFlags.RiverOut);
+
+	/// <summary>
+	/// Whether this cell contains a legacy center-river segment.
+	/// </summary>
+	public readonly bool HasLegacyRiver => flags.HasAny(HexFlags.River);
+
+	/// <summary>
+	/// Whether there is either a legacy center river or an HF boundary river.
+	/// </summary>
+	public readonly bool HasRiver =>
+		HasLegacyRiver || HasHFRiver;
+
+	/// <summary>
+	/// Whether this cell owns at least one HF boundary-river segment.
+	/// </summary>
+	public readonly bool HasHFRiver => (hfRiverEdges & 0b111111) != 0;
+
+	/// <summary>
+	/// The six HF boundary-river bits used by rendering and serialization.
+	/// </summary>
+	public readonly int HFRiverEdgeMask => hfRiverEdges & 0b111111;
+
+	/// <summary>
+	/// Whether a river begins or ends in the cell.
+	/// </summary>
+	public readonly bool HasRiverBeginOrEnd =>
+		HasIncomingRiver != HasOutgoingRiver;
+	
+	/// <summary>
+	/// Incoming river direction, if applicable.
+	/// </summary>
+	public readonly HexDirection IncomingRiver => flags.RiverInDirection();
+
+	/// <summary>
+	/// Outgoing river direction, if applicable.
+	/// </summary>
+	/// 
+	public readonly HexDirection OutgoingRiver => flags.RiverOutDirection();
+	
+	/// <summary>
+	/// Vertical positions the the stream bed, if applicable.
+	/// </summary>
+	public readonly float StreamBedY =>
+		(VisualElevation + HexMetrics.streamBedElevationOffset) *
+		HexMetrics.elevationStep;
+
+	/// <summary>
+	/// Vertical position of the river's surface, if applicable.
+	/// </summary>
+	public readonly float RiverSurfaceY =>
+		(VisualElevation + HexMetrics.waterElevationOffset) *
+		HexMetrics.elevationStep;
+
+	/// <summary>
+	/// Vertical position of the water surface, if applicable.
+	/// </summary>
+	public readonly float WaterSurfaceY =>
+		(HexMetrics.visualWaterLevel + HexMetrics.waterElevationOffset) *
+		HexMetrics.elevationStep;
+	
+	/// <summary>
+	/// Elevation at which the cell is visible.
+	/// Highest of surface and water level.
+	/// </summary>
+	public readonly int ViewElevation =>
+		Elevation >= WaterLevel ? Elevation : WaterLevel;
+	
+	// <summary>
+	/// Get the <see cref="HexEdgeType"/> based on this and another cell.
+	/// </summary>
+	/// <param name="otherCell">Other cell to consider as neighbor.</param>
+	/// <returns><see cref="HexEdgeType"/> between cells.</returns>
+	public readonly HexEdgeType GetEdgeType(HexCellData otherCell) =>
+		HexMetrics.GetEdgeType(VisualElevation, otherCell.VisualElevation);
+	
+	/// <summary>
+	/// Whether an incoming river goes through a specific cell edge.
+	/// </summary>
+	/// <param name="direction">Edge direction relative to the cell.</param>
+	/// <returns>Whether an incoming river goes through the edge.</returns>
+	public readonly bool HasIncomingRiverThroughEdge(HexDirection direction) =>
+		flags.HasRiverIn(direction);
+	
+	/// <summary>
+	/// Whether a river goes through a specific cell edge.
+	/// </summary>
+	/// <param name="direction">Edge direction relative to the cell.</param>
+	/// <returns>Whether a river goes through the edge.</returns>
+	public readonly bool HasRiverThroughEdge(HexDirection direction) =>
+		HasLegacyRiverThroughEdge(direction) ||
+		HasHFRiverThroughEdge(direction);
+
+	/// <summary>
+	/// Whether a legacy center river crosses a specific cell edge.
+	/// </summary>
+	public readonly bool HasLegacyRiverThroughEdge(HexDirection direction) =>
+		flags.HasRiverIn(direction) || flags.HasRiverOut(direction);
+
+	/// <summary>
+	/// Whether an HF river lies along a specific cell boundary.
+	/// </summary>
+	public readonly bool HasHFRiverThroughEdge(HexDirection direction) =>
+		(hfRiverEdges & (1 << (int)direction)) != 0;
+
+	/// <summary>
+	/// Whether a road goes through a specific cell edge.
+	/// </summary>
+	/// <param name="direction">Edge direction relative to cell.</param>
+	/// <returns>Whether a road goes through the edge.</returns>
+	public readonly bool HasRoadThroughEdge(HexDirection direction) =>
+		flags.HasRoad(direction);
+}

@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9152d25e5e0c44d6bf664eede6ff64f1, type: 3}
+  m_Name: Civ6 Reference Land Materials
+  m_EditorClassIdentifier: 
+  responseAtlas: {fileID: 18700000, guid: 05d3a3942f56938458e184a9d8e01088, type: 2}
+  materialMasks: {fileID: 18700000, guid: 8633a0e5f589a7748a749f6f24cb8277, type: 2}
+  layerNames:
+  - TER_Desert_Base
+  - TER_Grassland_Base
+  - TER_Plains_Base
+  - TER_Tundra_Base
+  - TER_Snow_Base
+  - TER_Desert_Hills
+  - TER_Grassland_Top_Hills
+  - TER_Plains_Top_Hills
+  - TER_Tundra_Base
+  - TER_Snow_Base
+  - TER_Mountain_Base
+  - TER_Mountain_Top
+  - TER_Mountain_Snow
+  - TER_Mountain_Desert_Base
+  - TER_Mountain_Desert_Stripe01
+  - TER_Mountain_Desert_Stripe02
+  - TER_Mountain_Desert_Stripe03
+  - TER_Tundra_Blend
+  normalStrength: 0.3
+  heightBlend: 0.14
+  macroStrength: 0.18
+  macroUVRatio: 0.19
+  roughnessMin: 0.38
+  roughnessMax: 0.96
+  specularStrength: 0.12
+  provenance: Local Civilization VI SDK materials, original authorship retained.
+    SourceAudit.json SHA256 476323efbee00984b9e7144be3035266239f0b4b76cc419b088fa6f3627545c2.
+    RG=signed dH/du,dH/dv in Unity UV orientation; B=source gloss (white glossy),
+    A=source Fuzz. Fuzz BRDF and native CLEAN filtering were not recovered. Material
+    mask IDs were decoded before filtering; geometry heights were not changed.

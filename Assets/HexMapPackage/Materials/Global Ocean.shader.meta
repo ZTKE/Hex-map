@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 55f0e1c3991e4b26912af9a4754c30a0
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures:
+  - _Civ6WaterDeep0: {fileID: 2800000, guid: 42fd1c4fd7d0581ab6db392f22d41da4, type: 3}
+  - _Civ6WaterDeep1: {fileID: 2800000, guid: d45ec284729b5ddd997ffc627ce2ae7b, type: 3}
+  - _Civ6WaterCoast0: {fileID: 2800000, guid: 2116dd4e78115a32994d75315b906449, type: 3}
+  - _Civ6WaterCoast1: {fileID: 2800000, guid: 7fd9415a10495f4fbd1cb0c77bf792a4, type: 3}
+  nonModifiableTextures:
+  - _Civ6WaterDeep0: {fileID: 2800000, guid: 42fd1c4fd7d0581ab6db392f22d41da4, type: 3}
+  - _Civ6WaterDeep1: {fileID: 2800000, guid: d45ec284729b5ddd997ffc627ce2ae7b, type: 3}
+  - _Civ6WaterCoast0: {fileID: 2800000, guid: 2116dd4e78115a32994d75315b906449, type: 3}
+  - _Civ6WaterCoast1: {fileID: 2800000, guid: 7fd9415a10495f4fbd1cb0c77bf792a4, type: 3}
+  userData:
+  assetBundleName:
+  assetBundleVariant:

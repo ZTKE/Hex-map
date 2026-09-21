@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: b87f1d0218ec45998666b396e3a9efcc
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures:
+  - _Civ6RiverWaveMoments: {fileID: 2800000, guid: 3432d6333d4c58ecb8871d171ff2991a, type: 3}
+  - _Civ6RiverDensity: {fileID: 2800000, guid: 0e21509cb3fa51e8acfc6ca03a3e32b8, type: 3}
+  - _Civ6RiverScatter: {fileID: 2800000, guid: 51f156c0b9935c1c93590dbb3a110a67, type: 3}
+  - _Civ6RiverBankAlbedo: {fileID: 2800000, guid: cf19a86b9ff55823ab5ab6ad8c9e207d, type: 3}
+  nonModifiableTextures:
+  - _Civ6RiverWaveMoments: {fileID: 2800000, guid: 3432d6333d4c58ecb8871d171ff2991a, type: 3}
+  - _Civ6RiverDensity: {fileID: 2800000, guid: 0e21509cb3fa51e8acfc6ca03a3e32b8, type: 3}
+  - _Civ6RiverScatter: {fileID: 2800000, guid: 51f156c0b9935c1c93590dbb3a110a67, type: 3}
+  - _Civ6RiverBankAlbedo: {fileID: 2800000, guid: cf19a86b9ff55823ab5ab6ad8c9e207d, type: 3}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

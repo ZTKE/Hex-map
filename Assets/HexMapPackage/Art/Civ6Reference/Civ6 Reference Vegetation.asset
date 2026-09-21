@@ -1,0 +1,151 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4230f85c00e4537b61f0f87269cc8a2, type: 3}
+  m_Name: Civ6 Reference Vegetation
+  m_EditorClassIdentifier: 
+  broadleaf:
+  - name: Trees_Decid_01
+    mesh: {fileID: 4300000, guid: 3cb4d7007151b9d4e888a45da9ddea90, type: 2}
+    material: {fileID: 2100000, guid: 5fd6ff3a9061c744fb9f623730760d4b, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.15
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  - name: Trees_Decid_02
+    mesh: {fileID: 4300000, guid: 06945afd6baeed647853ad8b59399b07, type: 2}
+    material: {fileID: 2100000, guid: 5fd6ff3a9061c744fb9f623730760d4b, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.3
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  - name: Trees_Decid_03
+    mesh: {fileID: 4300000, guid: 38e1e3bc22fb68341a83d547b1cf0312, type: 2}
+    material: {fileID: 2100000, guid: 5fd6ff3a9061c744fb9f623730760d4b, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.4
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  conifer:
+  - name: Trees_Pine_01
+    mesh: {fileID: 4300000, guid: 35daeb8ddae58884a803b5f46b08a02d, type: 2}
+    material: {fileID: 2100000, guid: 5c5921cfe73114c4ba1d563737bb2b57, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.4
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  - name: Trees_Pine_02
+    mesh: {fileID: 4300000, guid: fee3645d4a69dde4a963a17cf22cd675, type: 2}
+    material: {fileID: 2100000, guid: 5c5921cfe73114c4ba1d563737bb2b57, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.2
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  - name: Trees_Pine_03
+    mesh: {fileID: 4300000, guid: 59ebe54e351a23849b940f6d9b3d3933, type: 2}
+    material: {fileID: 2100000, guid: 5c5921cfe73114c4ba1d563737bb2b57, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.3
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  jungle:
+  - name: Jungle_PalmA
+    mesh: {fileID: 4300000, guid: 30ca5d0eff6a8284394ac0a1007336ac, type: 2}
+    material: {fileID: 2100000, guid: 068734a3d941546448b7a5a2eabc2778, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.45
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  - name: Jungle_PalmB
+    mesh: {fileID: 4300000, guid: ec1315d11bffc694699269a08a7087fe, type: 2}
+    material: {fileID: 2100000, guid: 068734a3d941546448b7a5a2eabc2778, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.2
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  - name: Jungle_PalmC
+    mesh: {fileID: 4300000, guid: 31f63410a700e2c499a05ebfd27adbc1, type: 2}
+    material: {fileID: 2100000, guid: 068734a3d941546448b7a5a2eabc2778, type: 2}
+    materials: []
+    lodMesh: {fileID: 0}
+    height: 3.3
+    scaleVariation: 0.22
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  deadwood: []
+  desertAccents:
+  - name: Cactus Forked
+    mesh: {fileID: 4300000, guid: 979846ed1ce358347a43fd0d518892e8, type: 2}
+    material: {fileID: 2100000, guid: 33cb72e3a4272944cb7fd468f0ba1dc3, type: 2}
+    materials: []
+    lodMesh: {fileID: 4300000, guid: f89953d029d73804a970a92388bb9127, type: 2}
+    height: 1.7
+    scaleVariation: 0.24
+    weight: 1
+    rotationOffset: {x: 0, y: 0, z: 0}
+  - name: Cactus Young
+    mesh: {fileID: 4300000, guid: 6baf8d3ce6b560c4387cfb4c2f64f65c, type: 2}
+    material: {fileID: 2100000, guid: 33cb72e3a4272944cb7fd468f0ba1dc3, type: 2}
+    materials: []
+    lodMesh: {fileID: 4300000, guid: 2b00173975a983c4a8387eb077a320b5, type: 2}
+    height: 1.35
+    scaleVariation: 0.24
+    weight: 1.25
+    rotationOffset: {x: 0, y: 0, z: 0}
+  - name: Cactus Cluster
+    mesh: {fileID: 4300000, guid: 851af2c8ced74af4e9c32cff0df988fb, type: 2}
+    material: {fileID: 2100000, guid: 33cb72e3a4272944cb7fd468f0ba1dc3, type: 2}
+    materials: []
+    lodMesh: {fileID: 4300000, guid: 71b7ed144e48bac42aa5f7f78de59333, type: 2}
+    height: 0.85
+    scaleVariation: 0.24
+    weight: 0.8
+    rotationOffset: {x: 0, y: 0, z: 0}
+  desertAccentDensity: 3
+  desertAccentCoverage: 0.38
+  desertAccentMaxSlope: 26
+  desertAccentClusterRadius: 2.8
+  densityPerCell: 34
+  maxInstancesPerChunk: 1024
+  maxSlopeDegrees: 38
+  roadClearance: 1.15
+  riverClearance: 1.45
+  coastClearance: 1.1
+  minimumSpacing: 0.8
+  clusteredFraction: 0.8
+  clusterRadius: 3.2
+  canopyStructure: 0.65
+  groveTintVariation: 0.08
+  forestEdgeWidth: 2.4
+  mountainDensityScale: 0.25
+  mountainTreeLine: 0.42
+  settlementClearance: 3.3
+  groundInset: 0.08
+  lodDistance: 180
+  shadowDistance: 280
+  drawDistance: 850
+  tropicalBroadleaf: 0

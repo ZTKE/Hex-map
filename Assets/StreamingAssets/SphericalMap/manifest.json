@@ -1,0 +1,29 @@
+{
+    "utc": "2026-09-14T15:15:46.8643694Z",
+    "terrainId": "b5e589f7012a63f0a43854a3f17073552ad056cf3f2219990c1777e9b245b2d2",
+    "cells": 590492,
+    "cities": 882,
+    "regions": 984,
+    "files": [
+        {
+            "file": "TerrainR5.bytes",
+            "sha256": "0eae82dda035244964f6759b5ef959745cb0b9b9c7188e96a18c1542bf9c7e50",
+            "bytes": 129446333
+        },
+        {
+            "file": "Gameplay-v1.bin",
+            "sha256": "ddfaef797a541f54d8226c461561bf4afe4319974b8b7f95f9b9758353eb1555",
+            "bytes": 14541080
+        },
+        {
+            "file": "Interaction-v1.bin",
+            "sha256": "1ff79c39d681c7240f83900088bb0310b4d0a906b741c677e3faa12c10a37f32",
+            "bytes": 51422624
+        },
+        {
+            "file": "StartupR5.bytes",
+            "sha256": "fd54613ae8767c08f16cac373eb5d9cd457481db70f9cc055a614c45c6e1e2d8",
+            "bytes": 19232993
+        }
+    ]
+}

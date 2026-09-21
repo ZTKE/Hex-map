@@ -1,0 +1,163 @@
+{
+  "format": "HXEARTH1",
+  "width": 1100,
+  "height": 469,
+  "sourceVMin": 0.15,
+  "sourceVMax": 0.8888889,
+  "rowOrder": "south to north, odd rows shifted +0.5 cell, same as DefaultWorldMapBaker",
+  "recordFields": [
+    "terrain",
+    "landform",
+    "vegetation",
+    "density",
+    "tint",
+    "rotation"
+  ],
+  "recordBytes": 6,
+  "atlasSha256": "a760c300b6f65afe6caf35c07a2f97c4bd52c7d9534fe91589457d2dc3086921",
+  "elevation": {
+    "dataset": "ETOPO 2022 v1, 60 arc-second global ice-surface elevation",
+    "publisher": "NOAA National Centers for Environmental Information",
+    "retrievedAtLocalDate": "2026-09-06",
+    "sourceUrl": "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/60s/60s_surface_elev_gtif/ETOPO_2022_v1_60s_N90W180_surface.tif",
+    "metadataUrl": "https://www.ncei.noaa.gov/access/metadata/landing-page/bin/iso?id=gov.noaa.ngdc.mgg.dem%3Aetopo_2022",
+    "userGuideUrl": "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/docs/1.2%20ETOPO%202022%20User%20Guide.pdf",
+    "doi": "https://doi.org/10.25921/fd45-gt74",
+    "citation": "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 15 Arc-Second Global Relief Model. NOAA National Centers for Environmental Information. https://doi.org/10.25921/fd45-gt74. Accessed 2026-09-06.",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Official metadata Other Constraints declares worldwide CC0-1.0. Official User Guide section 4 explicitly allows private, academic and commercial use.",
+    "localFile": "ETOPO_2022_v1_60s_N90W180_surface.tif",
+    "downloadBytes": 465969062,
+    "sha256": "9d27d4b8ea8e76977e2988bca667d7c8fa68b927355feffcddd6b4875a7fd08e",
+    "format": "GeoTIFF, one Float32 elevation band, Deflate compression, floating-point predictor",
+    "width": 21600,
+    "height": 10800,
+    "horizontalCrs": "EPSG:4326 (WGS 84 longitude/latitude)",
+    "verticalCrs": "EPSG:3855 (EGM2008 height)",
+    "units": "meters, positive up; ocean bathymetry is negative",
+    "west": -180.0,
+    "east": 180.0,
+    "south": -90.0,
+    "north": 90.0,
+    "pixelSizeDegrees": 0.016666666666666666,
+    "registration": "PixelIsArea; north-west outer corner (-180, 90), x eastward, image rows southward",
+    "pixelCenterFormula": "longitude = -180 + (x+0.5)/60; latitude = 90 - (y+0.5)/60",
+    "noData": -99999.0,
+    "fullDecodeVerified": true,
+    "observedNoDataCount": 0,
+    "observedNonFiniteCount": 0,
+    "observedMinimumMeters": -10752.08203125,
+    "observedMaximumMeters": 8157.3564453125,
+    "notes": "Original full official 60-second file, no local resampling. NOAA derives this global lower-resolution grid from its 15-second tiles. Grid cell average elevations need not equal surveyed point summit heights. Ice-surface version represents the top of Greenland/Antarctic ice sheets; it does not expose sub-ice bedrock. Preserve the project's existing land mask when deriving gameplay terrain."
+  },
+  "landcover": {
+    "publisher": "NASA GIBS / MODIS Land Team",
+    "product": "MCD12Q1 IGBP annual visualization",
+    "year": 2001,
+    "pixelDegrees": 0.05,
+    "url": "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?service=WMS&request=GetMap&version=1.1.1&layers=MODIS_Combined_L3_IGBP_Land_Cover_Type_Annual&styles=&format=image%2Fpng&transparent=true&srs=EPSG%3A4326&bbox=-180%2C-90%2C180%2C90&width=7200&height=3600&time=2001-01-01",
+    "sha256": "c7dc00a90c405b858ae826f779ec2a63bc82b441a205dcb942cf0b3c65c74b56",
+    "paletteUrl": "https://gibs.earthdata.nasa.gov/colormaps/v1.3/MODIS_IGBP_Land_Cover_Type.xml",
+    "paletteSha256": "29a9b5fe6d976a0ea5da12c46d9accfe20a1807b3f602d36d940663d6e854ef7",
+    "interpretation": "Exact categorical RGB lookup; nearest-neighbor geospatial sampling; not raw 500m science data."
+  },
+  "rules": {
+    "satelliteUnknownPixels": 2237,
+    "coastCellsFilledFromNearbyLand": 900,
+    "coastCellsWithExplicitGrassFallback": 1,
+    "reliefSampleGrid": "9x9 per hex footprint, 10th to 90th percentile in metres",
+    "composition": "Measured coherent ridge belts + Workshop landform balance + one continuous Plateau level",
+    "workshop": {
+      "path": "D:\\Steam\\steamapps\\workshop\\content\\289070\\973878936\\180x108 Earth Map.Civ6Map",
+      "sha256": "3732964432b282ab2d6094d2250c84b2c2756a4f0df656c3bc7b2c37e73e916a",
+      "id": "973878936",
+      "author": "Sadberlin",
+      "dimensions": [
+        180,
+        108
+      ],
+      "landformStatistics": {
+        "land_cells": 6983,
+        "landform_counts": {
+          "flat": 3051,
+          "hills": 3141,
+          "mountains": 791
+        },
+        "terrain_counts": {
+          "desert": 1058,
+          "grass": 2418,
+          "plains": 1996,
+          "tundra": 874,
+          "snow": 637
+        },
+        "forest_cells": 1264,
+        "jungle_cells": 425
+      },
+      "thresholdInfluence": "At most 12%; 2.5 target-cell smoothing; supported dry reference only",
+      "registration": "Approximate named-place piecewise affine, not an exact geographic projection",
+      "supportedDryTargetCells": 77061
+    },
+    "mountainThresholdMeters": 650.0,
+    "hillThresholdMeters": 96.604,
+    "reliefSmoothingSigmaCells": 1.15,
+    "plateauCells": 3281,
+    "connectivity": "Six neighbours on odd-row-offset hex grid, with horizontal wrap",
+    "lowerAustralianRanges": {
+      "bounds": [
+        145,
+        154,
+        -39,
+        -17
+      ],
+      "sourceSelection": "Civ6 x160..168/y9..24: 10 mountains of 96 dry cells",
+      "sourceMountainFraction": 0.10416666666666667,
+      "scoreMinimumMeters": 340,
+      "broadElevationMinimumMeters": 450,
+      "localReliefMinimumMeters": 220,
+      "elevationMinimumMeters": 300,
+      "minimumComponentCells": 5,
+      "addedMountainCells": 98,
+      "regionLandCells": 1358,
+      "regionMountainCells": 101
+    },
+    "tibetInternalRanges": {
+      "prominence": "Median DEM elevation minus sigma-2.2-cell broad DEM",
+      "minimumProminenceMeters": 100,
+      "seedReliefMinimumMeters": 350,
+      "retainedReliefMinimumMeters": 300,
+      "smoothingSigmaCells": 0.7,
+      "smoothingThreshold": 0.34,
+      "minimumComponentCells": 16,
+      "tinyPlateauIslandMinimumCells": 12,
+      "addedMountainCells": 605
+    },
+    "tibetHighlandCells": 2492,
+    "tibetPlateauCells": 1422,
+    "tibetHighlandForms": [
+      0,
+      0,
+      1070,
+      1422
+    ],
+    "tibetCoreLandCells": 882,
+    "tibetCorePlateauCells": 713,
+    "plateauRecipe": "One raised broad surface, not absolute gameplay elevation; broad DEM >=1400m, smoother interiors; Tibet broad DEM >=3400m with higher local relief tolerance",
+    "ridgeOrientation": {
+      "method": "DEM slope structure tensor; undirected axis; sigma=1.1 target cells",
+      "minimumCoherence": 0.35,
+      "minimumSupport": 0.2,
+      "mountainCells": 13638,
+      "confidentMountainCells": 6157,
+      "changedMountainRotations": 1832,
+      "unchangedNonMountainRotations": true
+    }
+  },
+  "limitations": [
+    "2001 land cover is not a reconstruction of 1936 vegetation or agriculture.",
+    "Game-sized flat/hill/mountain/plateau modules represent landforms, not metre-accurate 3D topography.",
+    "The Workshop map guides composition through statistics and weak, approximately registered local hints; its hand-warped coordinates are not copied.",
+    "Plateaus use one visual height level, with existing water and river datum preserved.",
+    "Tundra uses latitude/elevation plus land-cover heuristic; no historical climate simulation.",
+    "This pass preserves existing rivers, roads, coasts, political data and cities; it does not generate new river networks."
+  ]
+}
